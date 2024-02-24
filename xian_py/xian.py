@@ -79,7 +79,7 @@ class Xian:
 
         result = {
             'success': True,
-            'tx_hash': data['result']['hash'],
+            'tx_hash': None,
             'result': None,
             'data': data
         }
@@ -90,14 +90,17 @@ class Xian:
 
         elif data['result']['check_tx']['code'] == 1:
             result['success'] = False
+            result['tx_hash'] = data['result']['hash']
             result['result'] = 'Transaction check not successful'
 
         elif data['result']['deliver_tx']['code'] == 1:
             result['success'] = False
+            result['tx_hash'] = data['result']['hash']
             result['result'] = 'Transaction delivery not successful'
 
         elif data['result']['deliver_tx']['data']['status'] == 1:
             result['success'] = False
+            result['tx_hash'] = data['result']['hash']
             result['result'] = data['result']['deliver_tx']['data']['result']
 
         return result
