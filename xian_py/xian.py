@@ -78,7 +78,7 @@ class Xian:
         data = tr.broadcast_tx(self.node_url, tx)
 
         result = {
-            'success': True,
+            'success': None,
             'tx_hash': None,
             'result': None,
             'data': data
@@ -100,6 +100,10 @@ class Xian:
 
         elif data['result']['deliver_tx']['data']['status'] == 1:
             result['success'] = False
+            result['tx_hash'] = data['result']['hash']
+            result['result'] = data['result']['deliver_tx']['data']['result']
+        else:
+            result['success'] = True
             result['tx_hash'] = data['result']['hash']
             result['result'] = data['result']['deliver_tx']['data']['result']
 
