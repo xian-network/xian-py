@@ -112,8 +112,8 @@ def broadcast_tx(
     if 'error' in data:
         return data
 
-    if decode and data['result']['deliver_tx']['data']:
-        decoded = decode_str(data['result']['deliver_tx']['data'])
-        data['result']['deliver_tx']['data'] = json.loads(decoded)
+    if decode and data['tx_result']['data']:
+        decoded = decode_str(data['tx_result']['data'])
+        data['tx_result']['data'] = json.loads(decoded)
 
     return data
