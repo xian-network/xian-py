@@ -106,14 +106,17 @@ def broadcast_tx(
     """
     payload = json.dumps(tx).encode().hex()
     r = requests.post(f'{node_url}/broadcast_tx_commit?tx="{payload}"')
+
+    # TODO: If statuscode != 200, set error as JSON data or raise exception?
+
     data = r.json()
 
     # For example if tx already exists in cache
     if 'error' in data:
         return data
 
-    if decode and data['tx_result']['data']:
-        decoded = decode_str(data['tx_result']['data'])
-        data['tx_result']['data'] = json.loads(decoded)
+    if decode and data['result']['tx_result']['data']:
+        decoded = decode_str(data['result']['tx_result']['data'])
+        data['result']['tx_result']['data'] = json.loads(decoded)
 
     return data
