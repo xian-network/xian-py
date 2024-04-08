@@ -202,3 +202,16 @@ class Xian:
 
         kwargs = {"name": name, "code": code}
         return self.send_tx('submission', 'submit_contract', kwargs, stamps, chain_id)
+
+    def get_nodes(self) -> list:
+        """ Retrieve list of nodes from the network """
+
+        r = requests.post(f'{self.node_url}/net_info')
+        peers = r.json()['result']['peers']
+
+        ips = list()
+
+        for peer in peers:
+            ips.append(peer['remote_ip'])
+
+        return ips
