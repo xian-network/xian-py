@@ -3,6 +3,7 @@ import requests
 import xian_py.utils as utl
 import xian_py.transactions as tr
 
+from xian_py.exception import XianException
 from xian_py.wallet import Wallet
 from typing import Dict, Any
 
@@ -25,24 +26,29 @@ class Xian:
 
         address = address if address else self.wallet.public_key
 
-        with requests.get(f'{self.node_url}/abci_query?path="/get/{contract}.balances:{address}"') as r:
-            balance_byte_string = r.json()['result']['response']['value']
+        try:
+            r = requests.get(f'{self.node_url}/abci_query?path="/get/{contract}.balances:{address}"')
+            r.raise_for_status()
+        except Exception as e:
+            raise XianException(e)
+            
+        balance_byte_string = r.json()['result']['response']['value']
 
-            # Decodes to 'None'
-            if balance_byte_string == 'AA==':
-                return 0
+        # Decodes to 'None'
+        if balance_byte_string == 'AA==':
+            return 0
 
-            balance = utl.decode_str(balance_byte_string)
+        balance = utl.decode_str(balance_byte_string)
 
-            if balance.isdigit():
-                balance = int(balance)
+        if balance.isdigit():
+            balance = int(balance)
+        else:
+            if float(balance).is_integer():
+                balance = int(float(balance))
             else:
-                if float(balance).is_integer():
-                    balance = int(float(balance))
-                else:
-                    balance = float(balance)
+                balance = float(balance)
 
-            return balance
+        return balance
 
     def send_tx(
             self,
@@ -136,31 +142,36 @@ class Xian:
         path = f'/get/{contract}.{variable}'
         path = f'{path}:{":".join(keys)}' if keys else path
 
-        with requests.get(f'{self.node_url}/abci_query?path="{path}"') as r:
-            byte_string = r.json()['result']['response']['value']
+        try:
+            r = requests.get(f'{self.node_url}/abci_query?path="{path}"')
+            r.raise_for_status()
+        except Exception as e:
+            raise XianException(e)
 
-            # Decodes to 'None'
-            if byte_string == 'AA==':
-                return None
+        byte_string = r.json()['result']['response']['value']
 
-            data = utl.decode_str(byte_string)
+        # Decodes to 'None'
+        if byte_string == 'AA==':
+            return None
 
-            try:
-                return int(data)
-            except:
-                pass
-            try:
-                if float(data).is_integer():
-                    return int(float(data))
-                return float(data)
-            except:
-                pass
-            try:
-                return ast.literal_eval(data)
-            except:
-                pass
+        data = utl.decode_str(byte_string)
 
-            return data
+        try:
+            return int(data)
+        except:
+            pass
+        try:
+            if float(data).is_integer():
+                return int(float(data))
+            return float(data)
+        except:
+            pass
+        try:
+            return ast.literal_eval(data)
+        except:
+            pass
+
+        return data
 
     def get_approved_amount(
             self,
@@ -206,7 +217,12 @@ class Xian:
     def get_nodes(self) -> list:
         """ Retrieve list of nodes from the network """
 
-        r = requests.post(f'{self.node_url}/net_info')
+        try:
+            r = requests.post(f'{self.node_url}/net_info')
+            r.raise_for_status()
+        except Exception as e:
+            raise XianException(e)
+
         peers = r.json()['result']['peers']
 
         ips = list()

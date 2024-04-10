@@ -4,6 +4,7 @@ import json
 from xian_py.wallet import Wallet
 from xian_py.utils import decode_dict, decode_str
 from xian_py.formating import format_dictionary, check_format_of_payload
+from xian_py.exception import XianException
 from xian_py.encoding import encode
 from typing import Dict, Any
 
@@ -15,7 +16,12 @@ def get_nonce(node_url: str, address: str) -> int:
     :param address: Wallet address for which the nonce will be returned
     :return: Next unused nonce
     """
-    r = requests.post(f'{node_url}/abci_query?path="/get_next_nonce/{address}"')
+    try:
+        r = requests.post(f'{node_url}/abci_query?path="/get_next_nonce/{address}"')
+        r.raise_for_status()
+    except Exception as e:
+        raise XianException(e)
+
     data = r.json()['result']['response']['value']
 
     # Data is None
@@ -34,7 +40,12 @@ def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> Dict[str, Any]:
     :param decode: If TRUE, returned JSON data will be decoded
     :return: Transaction data in JSON
     """
-    r = requests.get(f'{node_url}/tx?hash=0x{tx_hash}')
+    try:
+        r = requests.get(f'{node_url}/tx?hash=0x{tx_hash}')
+        r.raise_for_status()
+    except Exception as e:
+        raise XianException(e)
+
     data = r.json()
 
     if decode and 'result' in data:
@@ -105,9 +116,12 @@ def broadcast_tx(
     :return: Broadcast data in JSON
     """
     payload = json.dumps(tx).encode().hex()
-    r = requests.post(f'{node_url}/broadcast_tx_commit?tx="{payload}"')
 
-    # TODO: If statuscode != 200, set error as JSON data or raise exception?
+    try:
+        r = requests.post(f'{node_url}/broadcast_tx_commit?tx="{payload}"')
+        r.raise_for_status()
+    except Exception as e:
+        raise XianException(e)
 
     data = r.json()
 
