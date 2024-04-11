@@ -21,13 +21,14 @@ class Xian:
 
         data = tr.get_tx(self.node_url, tx_hash)
 
-        if 'result' in data and data['result']['tx_result']['code'] == 0:
+        if 'error' in data:
+            data['success'] = False
+            data['message'] = data['error']['data']
+        elif data['result']['tx_result']['code'] == 0:
             data['success'] = True
         else:
             data['success'] = False
-
-            if 'error' in data:
-                data['message'] = data['error']['data']
+            data['message'] = data['result']['tx_result']['data']['result']
 
         return data
 
