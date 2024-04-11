@@ -1,11 +1,13 @@
 import ast
 import requests
+
 import xian_py.utils as utl
 import xian_py.transactions as tr
 
 from xian_py.exception import XianException
 from xian_py.wallet import Wallet
-from typing import Dict, Any
+
+from typing import Dict, Any, Optional
 
 
 class Xian:
@@ -16,7 +18,18 @@ class Xian:
 
     def get_tx(self, tx_hash: str) -> Dict[str, Any]:
         """ Return transaction data """
-        return tr.get_tx(self.node_url, tx_hash)
+
+        data = tr.get_tx(self.node_url, tx_hash)
+
+        if 'result' in data and data['result']['tx_result']['code'] == 0:
+            data['success'] = True
+        else:
+            data['success'] = False
+
+            if 'error' in data:
+                data['message'] = data['error']['data']
+
+        return data
 
     def get_balance(
             self,
@@ -28,7 +41,6 @@ class Xian:
 
         try:
             r = requests.get(f'{self.node_url}/abci_query?path="/get/{contract}.balances:{address}"')
-            r.raise_for_status()
         except Exception as e:
             raise XianException(e)
             
@@ -56,13 +68,9 @@ class Xian:
             function: str,
             kwargs: dict,
             stamps: int | str = 500,
-            chain_id: str = None) -> Dict[str, Any]:
-        """
-        Send a transaction to the network
-        :returns:
-        - success - Boolean. True if successful
-        - data - String. Transaction hash
-        """
+            chain_id: str = None,
+            synchronous: bool = True) -> Optional[Dict[str, Any]]:
+        """ Send a transaction to the network """
 
         if chain_id is None:
             if self.chain_id:
@@ -81,39 +89,31 @@ class Xian:
             )
         )
 
-        data = tr.broadcast_tx(self.node_url, tx)
+        if synchronous:
+            data = tr.broadcast_tx_sync(self.node_url, tx)
 
-        result = {
-            'success': None,
-            'tx_hash': None,
-            'result': None,
-            'data': data
-        }
+            result = {
+                'success': None,
+                'message': None,
+                'tx_hash': None,
+                'response': data
+            }
 
-        if 'error' in data:
-            result['success'] = False
-            result['result'] = data['error']['data']
+            if 'error' in data:
+                result['success'] = False
+                result['message'] = data['error']['data']
+            elif data['result']['code'] == 0:
+                result['success'] = True
+                result['tx_hash'] = data['result']['hash']
+            else:
+                result['success'] = False
+                result['message'] = data['result']['log']
+                result['tx_hash'] = data['result']['hash']
 
-        elif data['result']['check_tx']['code'] == 1:
-            result['success'] = False
-            result['tx_hash'] = data['result']['hash']
-            result['result'] = 'Transaction check not successful'
+            return result
 
-        elif data['result']['tx_result']['code'] == 1:
-            result['success'] = False
-            result['tx_hash'] = data['result']['hash']
-            result['result'] = 'Transaction delivery not successful'
-
-        elif data['result']['tx_result']['data']['status'] == 1:
-            result['success'] = False
-            result['tx_hash'] = data['result']['hash']
-            result['result'] = data['result']['tx_result']['data']['result']
         else:
-            result['success'] = True
-            result['tx_hash'] = data['result']['hash']
-            result['result'] = data['result']['tx_result']['data']['result']
-
-        return result
+            tr.broadcast_tx_async(self.node_url, tx)
 
     def send(
             self,
@@ -121,16 +121,18 @@ class Xian:
             to_address: str,
             token: str = "currency",
             stamps: int | str = 100,
-            chain_id: str = None) -> Dict[str, Any]:
-        """
-        Send a token to a given address
-        :returns:
-        - success - Boolean. True if successful
-        - data - String. Transaction hash
-        """
+            chain_id: str = None,
+            synchronous: bool = True) -> Optional[Dict[str, Any]]:
+        """ Send a token to a given address """
 
-        kwargs = {"amount": float(amount), "to": to_address}
-        return self.send_tx(token, "transfer", kwargs, stamps, chain_id)
+        return self.send_tx(
+            token,
+            "transfer",
+            {"amount": float(amount), "to": to_address},
+            stamps,
+            chain_id,
+            synchronous
+        )
 
     def get_contract_data(
             self,
@@ -144,7 +146,6 @@ class Xian:
 
         try:
             r = requests.get(f'{self.node_url}/abci_query?path="{path}"')
-            r.raise_for_status()
         except Exception as e:
             raise XianException(e)
 
@@ -192,34 +193,42 @@ class Xian:
             contract: str,
             token: str = "currency",
             amount: int | float | str = 900000000000,
-            chain_id: str = None) -> Dict[str, Any]:
+            chain_id: str = None,
+            synchronous: bool = True) -> Optional[Dict[str, Any]]:
         """ Approve smart contract to spend max token amount """
 
-        kwargs = {"amount": float(amount), "to": contract}
-        return self.send_tx(token, "approve", kwargs, 50, chain_id)
+        return self.send_tx(
+            token,
+            "approve",
+            {"amount": float(amount), "to": contract},
+            50,
+            chain_id,
+            synchronous
+        )
 
     def submit_contract(
             self,
             name: str,
             code: str,
             stamps: int | str = 1000,
-            chain_id: str = None) -> Dict[str, Any]:
-        """
-        Deploy a contract to the network
-        :returns:
-        - success - Boolean. True if successful
-        - data - String. Transaction hash
-        """
+            chain_id: str = None,
+            synchronous: bool = True) -> Optional[Dict[str, Any]]:
+        """ Deploy a contract to the network """
 
-        kwargs = {"name": name, "code": code}
-        return self.send_tx('submission', 'submit_contract', kwargs, stamps, chain_id)
+        return self.send_tx(
+            'submission',
+            'submit_contract',
+            {"name": name, "code": code},
+            stamps,
+            chain_id,
+            synchronous
+        )
 
     def get_nodes(self) -> list:
         """ Retrieve list of nodes from the network """
 
         try:
             r = requests.post(f'{self.node_url}/net_info')
-            r.raise_for_status()
         except Exception as e:
             raise XianException(e)
 

@@ -6,6 +6,7 @@ from xian_py.utils import decode_dict, decode_str
 from xian_py.formating import format_dictionary, check_format_of_payload
 from xian_py.exception import XianException
 from xian_py.encoding import encode
+
 from typing import Dict, Any
 
 
@@ -42,7 +43,6 @@ def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> Dict[str, Any]:
     """
     try:
         r = requests.get(f'{node_url}/tx?hash=0x{tx_hash}')
-        r.raise_for_status()
     except Exception as e:
         raise XianException(e)
 
@@ -104,33 +104,35 @@ def create_tx(
     return json.loads(tx)
 
 
-def broadcast_tx(
-        node_url: str,
-        tx: Dict[str, Any],
-        decode: bool = True) -> Dict[str, Any]:
+def broadcast_tx_sync(node_url: str, tx: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Broadcast transaction to the network
+    Submits a transaction to be included in the blockchain and returns
+    the response from CheckTx. Does not wait for DeliverTx result.
     :param node_url: Node URL in format 'http://<IP>:<Port>'
     :param tx: Transaction data in JSON format (dict)
-    :param decode: If TRUE, returned JSON data will be decoded
     :return: Broadcast data in JSON
     """
     payload = json.dumps(tx).encode().hex()
 
     try:
-        r = requests.post(f'{node_url}/broadcast_tx_commit?tx="{payload}"')
-        r.raise_for_status()
+        r = requests.post(f'{node_url}/broadcast_tx_sync?tx="{payload}"')
     except Exception as e:
         raise XianException(e)
 
     data = r.json()
-
-    # For example if tx already exists in cache
-    if 'error' in data:
-        return data
-
-    if decode and data['result']['tx_result']['data']:
-        decoded = decode_str(data['result']['tx_result']['data'])
-        data['result']['tx_result']['data'] = json.loads(decoded)
-
     return data
+
+
+def broadcast_tx_async(node_url: str, tx: Dict[str, Any]):
+    """
+    Submits a transaction to be included in the blockchain and returns
+    immediately. Does not wait for CheckTx or DeliverTx results.
+    :param node_url: Node URL in format 'http://<IP>:<Port>'
+    :param tx: Transaction data in JSON format (dict)
+    """
+    payload = json.dumps(tx).encode().hex()
+
+    try:
+        requests.post(f'{node_url}/broadcast_tx_async?tx="{payload}"')
+    except Exception as e:
+        raise XianException(e)
