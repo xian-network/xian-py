@@ -110,7 +110,7 @@ def broadcast_tx_sync(node_url: str, tx: Dict[str, Any]) -> Dict[str, Any]:
     the response from CheckTx. Does not wait for DeliverTx result.
     :param node_url: Node URL in format 'http://<IP>:<Port>'
     :param tx: Transaction data in JSON format (dict)
-    :return: Broadcast data in JSON
+    :return: JSON data with tx hash and CheckTx result
     """
     payload = json.dumps(tx).encode().hex()
 
@@ -136,3 +136,23 @@ def broadcast_tx_async(node_url: str, tx: Dict[str, Any]):
         requests.post(f'{node_url}/broadcast_tx_async?tx="{payload}"')
     except Exception as e:
         raise XianException(e)
+
+
+def broadcast_tx_commit(node_url: str, tx: Dict[str, Any]):
+    """
+    DO NOT USE IN PRODUCTION - ONLY FOR TESTS IN DEVELOPMENT!
+    Submits a transaction to be included in the blockchain and
+    returns the response from CheckTx and DeliverTx.
+    :param node_url: Node URL in format 'http://<IP>:<Port>'
+    :param tx: Transaction data in JSON format (dict)
+    :return: JSON data with tx hash, CheckTx and DeliverTx results
+    """
+    payload = json.dumps(tx).encode().hex()
+
+    try:
+        r = requests.post(f'{node_url}/broadcast_tx_commit?tx="{payload}"')
+    except Exception as e:
+        raise XianException(e)
+
+    data = r.json()
+    return data

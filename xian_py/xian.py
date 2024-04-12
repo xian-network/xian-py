@@ -11,10 +11,10 @@ from typing import Dict, Any, Optional
 
 
 class Xian:
-    def __init__(self, node_url: str, chain_id: str, wallet: Wallet = None):
-        self.wallet = wallet if wallet else Wallet()
-        self.chain_id = chain_id
+    def __init__(self, node_url: str, chain_id: str = None, wallet: Wallet = None):
         self.node_url = node_url
+        self.chain_id = chain_id if chain_id else self.get_chain_id()
+        self.wallet = wallet if wallet else Wallet()
 
     def get_tx(self, tx_hash: str) -> Dict[str, Any]:
         """ Return transaction data """
@@ -241,3 +241,18 @@ class Xian:
             ips.append(peer['remote_ip'])
 
         return ips
+
+    def get_genesis(self):
+        """ Retrieve genesis info from the network """
+
+        try:
+            r = requests.post(f'{self.node_url}/genesis')
+        except Exception as e:
+            raise XianException(e)
+
+        data = r.json()
+        return data
+
+    def get_chain_id(self):
+        """ Retrieve chain_id from the network """
+        return self.get_genesis()['result']['genesis']['chain_id']
