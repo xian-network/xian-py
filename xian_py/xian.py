@@ -68,7 +68,7 @@ class Xian:
             contract: str,
             function: str,
             kwargs: dict,
-            stamps: int | str = 500,
+            stamps: str | int = 0,
             chain_id: str = None,
             synchronous: bool = True) -> Optional[Dict[str, Any]]:
         """ Send a transaction to the network """
@@ -76,6 +76,23 @@ class Xian:
         if chain_id is None:
             if self.chain_id:
                 chain_id = self.chain_id
+
+        if stamps == 0:
+            stamps = tr.estimate_stamps(
+                self.node_url,
+                tr.create_tx(
+                    contract=contract,
+                    function=function,
+                    kwargs=kwargs,
+                    stamps=int(stamps),
+                    chain_id=chain_id,
+                    private_key=self.wallet.private_key,
+                    nonce=tr.get_nonce(
+                        self.node_url,
+                        self.wallet.public_key
+                    )
+                )
+            )
 
         tx = tr.create_tx(
             contract=contract,
@@ -121,7 +138,7 @@ class Xian:
             amount: int | float | str,
             to_address: str,
             token: str = "currency",
-            stamps: int | str = 100,
+            stamps: int | str = 0,
             chain_id: str = None,
             synchronous: bool = True) -> Optional[Dict[str, Any]]:
         """ Send a token to a given address """
@@ -202,7 +219,7 @@ class Xian:
             token,
             "approve",
             {"amount": float(amount), "to": contract},
-            50,
+            0,
             chain_id,
             synchronous
         )
@@ -211,7 +228,7 @@ class Xian:
             self,
             name: str,
             code: str,
-            stamps: int | str = 1000,
+            stamps: str | int = 0,
             chain_id: str = None,
             synchronous: bool = True) -> Optional[Dict[str, Any]]:
         """ Deploy a contract to the network """

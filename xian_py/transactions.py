@@ -59,6 +59,23 @@ def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> Dict[str, Any]:
     return data
 
 
+def estimate_stamps(node_url: str, tx: Dict[str, Any]) -> int:
+    """ Estimate the amount of stamps a tx will cost """
+    payload = json.dumps(tx).encode().hex()
+
+    try:
+        r = requests.post(f'{node_url}/abci_query?path="/estimate_stamps/{payload}"')
+        r.raise_for_status()
+    except Exception as e:
+        raise XianException(e)
+
+    data = r.json()['result']['response']['value']
+    decoded_json = json.loads(decode_str(data))
+    stamps = decoded_json['stamps_used']
+
+    return int(stamps)
+
+
 def create_tx(
         contract: str,
         function: str,
@@ -104,6 +121,26 @@ def create_tx(
     return json.loads(tx)
 
 
+def broadcast_tx_commit(node_url: str, tx: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    DO NOT USE IN PRODUCTION - ONLY FOR TESTS IN DEVELOPMENT!
+    Submits a transaction to be included in the blockchain and
+    returns the response from CheckTx and DeliverTx.
+    :param node_url: Node URL in format 'http://<IP>:<Port>'
+    :param tx: Transaction data in JSON format (dict)
+    :return: JSON data with tx hash, CheckTx and DeliverTx results
+    """
+    payload = json.dumps(tx).encode().hex()
+
+    try:
+        r = requests.post(f'{node_url}/broadcast_tx_commit?tx="{payload}"')
+    except Exception as e:
+        raise XianException(e)
+
+    data = r.json()
+    return data
+
+
 def broadcast_tx_sync(node_url: str, tx: Dict[str, Any]) -> Dict[str, Any]:
     """
     Submits a transaction to be included in the blockchain and returns
@@ -136,23 +173,3 @@ def broadcast_tx_async(node_url: str, tx: Dict[str, Any]):
         requests.post(f'{node_url}/broadcast_tx_async?tx="{payload}"')
     except Exception as e:
         raise XianException(e)
-
-
-def broadcast_tx_commit(node_url: str, tx: Dict[str, Any]):
-    """
-    DO NOT USE IN PRODUCTION - ONLY FOR TESTS IN DEVELOPMENT!
-    Submits a transaction to be included in the blockchain and
-    returns the response from CheckTx and DeliverTx.
-    :param node_url: Node URL in format 'http://<IP>:<Port>'
-    :param tx: Transaction data in JSON format (dict)
-    :return: JSON data with tx hash, CheckTx and DeliverTx results
-    """
-    payload = json.dumps(tx).encode().hex()
-
-    try:
-        r = requests.post(f'{node_url}/broadcast_tx_commit?tx="{payload}"')
-    except Exception as e:
-        raise XianException(e)
-
-    data = r.json()
-    return data
