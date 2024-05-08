@@ -7,8 +7,6 @@ from xian_py.formating import format_dictionary, check_format_of_payload
 from xian_py.exception import XianException
 from xian_py.encoding import encode
 
-from typing import Dict, Any
-
 
 def get_nonce(node_url: str, address: str) -> int:
     """
@@ -33,7 +31,7 @@ def get_nonce(node_url: str, address: str) -> int:
     return int(nonce)
 
 
-def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> Dict[str, Any]:
+def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> dict:
     """
     Return transaction either with encoded or decoded content
     :param node_url: Node URL in format 'http://<IP>:<Port>'
@@ -59,7 +57,7 @@ def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> Dict[str, Any]:
     return data
 
 
-def estimate_stamps(node_url: str, tx: Dict[str, Any]) -> int:
+def estimate_stamps(node_url: str, tx: dict) -> int:
     """ Estimate the amount of stamps a tx will cost """
     payload = json.dumps(tx).encode().hex()
 
@@ -79,11 +77,11 @@ def estimate_stamps(node_url: str, tx: Dict[str, Any]) -> int:
 def create_tx(
         contract: str,
         function: str,
-        kwargs: Dict[str, Any],
+        kwargs: dict,
         stamps: int,
         chain_id: str,
         private_key: str,
-        nonce: int) -> Dict[str, Any]:
+        nonce: int) -> dict:
     """
     Create offline transaction that can be broadcast
     :param contract: Contract name to be executed
@@ -121,7 +119,7 @@ def create_tx(
     return json.loads(tx)
 
 
-def broadcast_tx_commit(node_url: str, tx: Dict[str, Any]) -> Dict[str, Any]:
+def broadcast_tx_commit(node_url: str, tx: dict) -> dict:
     """
     DO NOT USE IN PRODUCTION - ONLY FOR TESTS IN DEVELOPMENT!
     Submits a transaction to be included in the blockchain and
@@ -141,7 +139,7 @@ def broadcast_tx_commit(node_url: str, tx: Dict[str, Any]) -> Dict[str, Any]:
     return data
 
 
-def broadcast_tx_sync(node_url: str, tx: Dict[str, Any]) -> Dict[str, Any]:
+def broadcast_tx_sync(node_url: str, tx: dict) -> dict:
     """
     Submits a transaction to be included in the blockchain and returns
     the response from CheckTx. Does not wait for DeliverTx result.
@@ -160,7 +158,7 @@ def broadcast_tx_sync(node_url: str, tx: Dict[str, Any]) -> Dict[str, Any]:
     return data
 
 
-def broadcast_tx_async(node_url: str, tx: Dict[str, Any]):
+def broadcast_tx_async(node_url: str, tx: dict):
     """
     Submits a transaction to be included in the blockchain and returns
     immediately. Does not wait for CheckTx or DeliverTx results.

@@ -7,7 +7,7 @@ import xian_py.transactions as tr
 from xian_py.exception import XianException
 from xian_py.wallet import Wallet
 
-from typing import Dict, Any, Optional
+from typing import Optional
 
 
 class Xian:
@@ -16,7 +16,7 @@ class Xian:
         self.chain_id = chain_id if chain_id else self.get_chain_id()
         self.wallet = wallet if wallet else Wallet()
 
-    def get_tx(self, tx_hash: str) -> Dict[str, Any]:
+    def get_tx(self, tx_hash: str) -> dict:
         """ Return transaction data """
 
         data = tr.get_tx(self.node_url, tx_hash)
@@ -70,7 +70,7 @@ class Xian:
             kwargs: dict,
             stamps: str | int = 0,
             chain_id: str = None,
-            synchronous: bool = True) -> Optional[Dict[str, Any]]:
+            synchronous: bool = True) -> Optional[dict]:
         """ Send a transaction to the network """
 
         if chain_id is None:
@@ -140,7 +140,7 @@ class Xian:
             token: str = "currency",
             stamps: int | str = 0,
             chain_id: str = None,
-            synchronous: bool = True) -> Optional[Dict[str, Any]]:
+            synchronous: bool = True) -> Optional[dict]:
         """ Send a token to a given address """
 
         return self.send_tx(
@@ -212,7 +212,7 @@ class Xian:
             token: str = "currency",
             amount: int | float | str = 900000000000,
             chain_id: str = None,
-            synchronous: bool = True) -> Optional[Dict[str, Any]]:
+            synchronous: bool = True) -> Optional[dict]:
         """ Approve smart contract to spend max token amount """
 
         return self.send_tx(
@@ -228,15 +228,23 @@ class Xian:
             self,
             name: str,
             code: str,
+            args: dict = None,
             stamps: str | int = 0,
             chain_id: str = None,
-            synchronous: bool = True) -> Optional[Dict[str, Any]]:
+            synchronous: bool = True) -> Optional[dict]:
         """ Deploy a contract to the network """
+
+        kwargs = dict()
+        kwargs['name'] = name
+        kwargs['code'] = code
+
+        if args:
+            kwargs['constructor_args'] = args
 
         return self.send_tx(
             'submission',
             'submit_contract',
-            {"name": name, "code": code},
+            kwargs,
             stamps,
             chain_id,
             synchronous

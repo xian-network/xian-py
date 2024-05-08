@@ -1,10 +1,8 @@
 import base64
 import json
 
-from typing import Dict, Any
 
-
-def decode_dict(encoded_dict: str) -> Dict[str, Any]:
+def decode_dict(encoded_dict: str) -> dict:
     decoded_data = decode_str(encoded_dict)
     decoded_tx = bytes.fromhex(decoded_data).decode('utf-8')
     return json.loads(decoded_tx)
