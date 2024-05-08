@@ -52,9 +52,22 @@ print(f'Signed message: {signed}')
 
 # Xian
 
-Replace `some-chain-id` with the chain ID of the network that you want to connect to. A chain ID is an ID that ensures that transactions can only be used in the network for which they were originally generated.
+### Send XIAN tokens
+```python
+from xian_py.wallet import Wallet
+from xian_py.xian import Xian
 
-Official chain IDs for Xian can be found [here](https://github.com/XianChain/xian/wiki#chain-ids)
+wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
+xian = Xian('http://<node IP>:26657', wallet=wallet)
+
+send_xian = xian.send(
+    amount=7,
+    to_address='b6504cf056e264a4c1932d5de6893d110db5459ab4f742eb415d98ed989bb988'
+)
+
+print(f'success: {send_xian["success"]}')
+print(f'tx_hash: {send_xian["tx_hash"]}')
+```
 
 ### Submit contract
 ```python
@@ -62,25 +75,55 @@ from xian_py.wallet import Wallet
 from xian_py.xian import Xian
 
 wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', 'some-chain-id', wallet)
+xian = Xian('http://<node IP>:26657', wallet=wallet)
 
 # Contract code
 code = '''
-token_name = Variable() # Optional
-
-@construct
-def seed():
-    # Create a token with the information from fixtures/tokenInfo
-    token_name.set("Test Token")
+I = importlib
 
 @export
-def set_token_name(new_name: str):
-    # Set the token name
-    token_name.set(new_name)
+def send(addresses: list, amount: float, contract: str):
+    token = I.import_module(contract)
+
+    for address in addresses:
+        token.transfer_from(amount=amount, to=address, main_account=ctx.signer)
 '''
 
-# Deploy contract on network
-submit = xian.submit_contract('con_new_token', code)
+# Deploy contract to network
+submit = xian.submit_contract('con_multisend', code)
+
+print(f'success: {submit["success"]}')
+print(f'tx_hash: {submit["tx_hash"]}')
+```
+
+### Submit contract with constructor arguments
+```python
+from xian_py.wallet import Wallet
+from xian_py.xian import Xian
+
+wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
+xian = Xian('http://<node IP>:26657', wallet=wallet)
+
+# Contract code
+code = '''
+test = Variable()
+
+@construct
+def init(test_var: str):
+    test.set(test_var)
+
+@export
+def test():
+    return test.get()
+'''
+
+# Constructor arguments
+arguments = {
+    'test_var': '12345'
+}
+
+# Deploy contract to network and pass arguments to it
+submit = xian.submit_contract('con_multisend', code, args=arguments)
 
 print(f'success: {submit["success"]}')
 print(f'tx_hash: {submit["tx_hash"]}')
@@ -92,32 +135,73 @@ from xian_py.wallet import Wallet
 from xian_py.xian import Xian
 
 wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', 'some-chain-id', wallet)
+xian = Xian('http://<node IP>:26657', wallet=wallet)
 
 # Get approved amount
-approved = xian.get_approved_amount('con_new_token')
+approved = xian.get_approved_amount('con_multisend')
 print(f'approved: {approved}')
 
 # Approve the default amount
-approve = xian.approve('con_new_token')
-print(f'success: {approve["success"]}')
-print(f'tx_hash: {approve["tx_hash"]}')
+approve = xian.approve('con_multisend')
+print(f'approve success: {approve["success"]}')
+print(f'approve tx_hash: {approve["tx_hash"]}')
 
 # Get approved amount again
-approved = xian.get_approved_amount('con_new_token')
-print(f'approved: {approved}')
+approved = xian.get_approved_amount('con_multisend')
+print(f'approved success: {approved["success"]}')
+print(f'approved tx_hash: {approved["tx_hash"]}')
 ```
 
-### Get token balance for an address
+### Get XIAN token balance of an address
 ```python
 from xian_py.wallet import Wallet
 from xian_py.xian import Xian
 
 wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', 'some-chain-id', wallet)
+xian = Xian('http://<node IP>:26657', wallet=wallet)
 
-balance = xian.get_balance('con_new_token')
+balance = xian.get_balance('b6504cf056e264a4c1932d5de6893d110db5459ab4f742eb415d98ed989bb988')
 print(f'balance: {balance}')
+```
+
+### Get custom token balance for a contract
+
+Contracts can have token balances and in this example `con_token` is a token contract and we want to check the balance of that token in the contract `con_test_contract`
+
+```python
+from xian_py.wallet import Wallet
+from xian_py.xian import Xian
+
+wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
+xian = Xian('http://<node IP>:26657', wallet=wallet)
+
+balance = xian.get_balance('con_test_contract', contract='con_token')
+print(f'balance: {balance}')
+```
+
+### Retrieve transaction by hash
+```python
+from xian_py.wallet import Wallet
+from xian_py.xian import Xian
+
+wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
+xian = Xian('http://<node IP>:26657', wallet=wallet)
+
+# Provide tx hash to get tx result
+tx = xian.get_tx('2C403B728E4AFFD656CAFAD38DD3E34C7CC8DA06464A7A5B1E8A426290F505A9')
+print(f'transaction: {tx}')
+```
+
+### Retrieve data from a contract
+
+In this case we assume that there is a contract `con_testing` that has a variable called `test`
+
+```python
+from xian_py.xian import Xian
+
+xian = Xian('http://<node IP>:26657')
+tx = xian.get_contract_data('con_testing', 'test')
+print(f'data: {tx}')
 ```
 
 # Transactions
@@ -128,7 +212,7 @@ from xian_py.wallet import Wallet
 from xian_py.xian import Xian
 
 wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', 'some-chain-id', wallet)
+xian = Xian('http://<node IP>:26657', wallet=wallet)
 
 send = xian.send_tx(
     contract='currency',
@@ -144,9 +228,17 @@ print(f'tx_hash: {send["tx_hash"]}')
 ```
 
 ### Send a transaction - Low level usage
+
+There are different way to submit a transaction:
+- `broadcast_tx_async` --> Only submit, no result will be returned
+- `broadcast_tx_sync` --> Submit and return transaction validation result
+- `broadcast_tx_commit` --> Submit and return result of transaction validation and processing
+
+Do NOT use `broadcast_tx_commit` in production!
+
 ```python
 from xian_py.wallet import Wallet
-from xian_py.transactions import get_nonce, create_tx, broadcast_tx
+from xian_py.transactions import get_nonce, create_tx, broadcast_tx_sync
 
 node_url = "http://<node IP>:26657"
 wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
@@ -168,20 +260,8 @@ tx = create_tx(
 )
 print(f'tx: {tx}')
 
-data = broadcast_tx(node_url, tx)
+# Return result of transaction validation
+data = broadcast_tx_sync(node_url, tx)
 print(f'success: {data["success"]}')
 print(f'tx_hash: {data["tx_hash"]}')
 ```
-
-### Retrieve transaction by hash
-```python
-from xian_py.wallet import Wallet
-from xian_py.xian import Xian
-
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', 'some-chain-id', wallet)
-
-tx = xian.get_tx('some tx hash')
-print(f'transaction: {tx}')
-```
-
