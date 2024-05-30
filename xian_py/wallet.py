@@ -20,7 +20,7 @@ def decrypt_msg(receiver_private_key: str, encrypted_msg: str):
 
 
 def verify_msg(public_key: str, msg: str, signature: str) -> bool:
-    """  """
+    """ Verify signed message by public key """
     signature = bytes.fromhex(signature)
     pk = bytes.fromhex(public_key)
     msg = msg.encode()
