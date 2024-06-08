@@ -78,7 +78,7 @@ class Xian:
                 chain_id = self.chain_id
 
         if stamps == 0:
-            stamps = tr.estimate_stamps(
+            stamps = tr.calculate_stamps(
                 self.node_url,
                 tr.create_tx(
                     contract=contract,

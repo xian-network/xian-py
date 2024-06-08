@@ -57,7 +57,7 @@ def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> dict:
     return data
 
 
-def estimate_stamps(node_url: str, tx: dict) -> int:
+def calculate_stamps(node_url: str, tx: dict) -> int:
     """ Estimate the amount of stamps a tx will cost """
     payload = json.dumps(tx).encode().hex()
 
