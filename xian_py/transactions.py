@@ -62,13 +62,18 @@ def calculate_stamps(node_url: str, tx: dict) -> int:
     payload = json.dumps(tx).encode().hex()
 
     try:
-        r = requests.post(f'{node_url}/abci_query?path="/estimate_stamps/{payload}"')
+        r = requests.post(f'{node_url}/abci_query?path="/calculate_stamps/{payload}"')
         r.raise_for_status()
+        data = r.json()
     except Exception as e:
         raise XianException(e)
 
-    data = r.json()['result']['response']['value']
-    decoded_json = json.loads(decode_str(data))
+    res = data['result']['response']
+
+    if res['code'] != 0:
+        raise XianException(res['log'])
+
+    decoded_json = json.loads(decode_str(res['value']))
     stamps = decoded_json['stamps_used']
 
     return int(stamps)
