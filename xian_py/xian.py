@@ -170,7 +170,7 @@ class Xian:
         byte_string = r.json()['result']['response']['value']
 
         # Decodes to 'None'
-        if byte_string == 'AA==':
+        if byte_string is None or byte_string == 'AA==':
             return None
 
         data = utl.decode_str(byte_string)
