@@ -1,10 +1,15 @@
 from decimal import Decimal
+
 import decimal
 
 MAX_UPPER_PRECISION = 30
 MAX_LOWER_PRECISION = 30
-CONTEXT = decimal.Context(prec=MAX_UPPER_PRECISION + MAX_LOWER_PRECISION, rounding=decimal.ROUND_FLOOR, Emin=-100,
-                          Emax=100)
+CONTEXT = decimal.Context(
+    prec=MAX_UPPER_PRECISION + MAX_LOWER_PRECISION,
+    rounding=decimal.ROUND_FLOOR,
+    Emin=-100,
+    Emax=100
+)
 decimal.setcontext(CONTEXT)
 
 
@@ -181,5 +186,5 @@ class ContractingDecimal:
 
 
 exports = {
-    'decimal': ContractingDecimal,
+    'decimal': ContractingDecimal
 }
