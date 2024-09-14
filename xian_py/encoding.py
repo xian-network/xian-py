@@ -4,8 +4,8 @@ import decimal
 from xian_py.xian_datetime import Datetime, Timedelta
 from xian_py.xian_decimal import ContractingDecimal, fix_precision
 
-MONGO_MIN_INT = -(2 ** 63)
-MONGO_MAX_INT = 2 ** 63 - 1
+MIN_INT = -(2 ** 63)
+MAX_INT = 2 ** 63 - 1
 
 
 class Encoder(json.JSONEncoder):
@@ -39,7 +39,7 @@ class Encoder(json.JSONEncoder):
 
 
 def encode_int(value: int):
-    if MONGO_MIN_INT < value and value < MONGO_MAX_INT:
+    if MIN_INT < value < MAX_INT:
         return value
 
     return {
@@ -69,6 +69,7 @@ def encode_ints_in_dict(data: dict):
     return d
 
 
+# TODO: This was initially done for MongoDB. Maybe we can now adjust that
 # JSON library from Python 3 doesn't let you instantiate your custom Encoder. You have to pass it as an obj to json
 def encode(data: [str, int, dict]):
     """ NOTE:
