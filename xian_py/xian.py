@@ -284,4 +284,5 @@ class Xian:
 
     def get_chain_id(self):
         """ Retrieve chain_id from the network """
-        return self.get_genesis()['result']['genesis']['chain_id']
+        chain_id = self.get_genesis()['result']['genesis']['chain_id']
+        return chain_id
