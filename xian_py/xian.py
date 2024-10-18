@@ -156,17 +156,16 @@ class Xian:
             synchronous
         )
 
-    def get_contract_data(
+    def get_state(
             self,
             contract: str,
-            variable: str = None,
+            variable: str,
             *keys: str) -> None | int | float | dict | str:
-        """ Retrieve contract data and decode it """
+        """ Retrieve contract state and decode it """
 
-        path = f'/get/{contract}'
+        path = f'/get/{contract}.{variable}'
 
-        if variable:
-            path = f'{path}.{variable}'
+        if len(keys) > 0:
             path = f'{path}:{":".join(keys)}' if keys else path
 
         try:
@@ -199,6 +198,28 @@ class Xian:
 
         return data
 
+    def get_contract(
+            self,
+            contract: str,
+            clean: bool = False) -> None | str:
+        """ Retrieve contract and decode it """
+
+        try:
+            r = requests.get(f'{self.node_url}/abci_query?path="contract/{contract}"')
+        except Exception as e:
+            raise XianException(e)
+
+        byte_string = r.json()['result']['response']['value']
+
+        # Decodes to 'None'
+        if byte_string is None or byte_string == 'AA==':
+            return None
+
+        code = utl.decode_str(byte_string)
+
+        if not clean: return code
+        return utl.remove_trailing_double_underscores(code)
+
     def get_approved_amount(
             self,
             contract: str,
@@ -208,7 +229,7 @@ class Xian:
 
         address = address if address else self.wallet.public_key
 
-        value = self.get_contract_data(token, 'balances', address, contract)
+        value = self.get_state(token, 'balances', address, contract)
         value = 0 if value is None else value
 
         return value

@@ -192,15 +192,37 @@ tx = xian.get_tx('2C403B728E4AFFD656CAFAD38DD3E34C7CC8DA06464A7A5B1E8A426290F505
 print(f'transaction: {tx}')
 ```
 
-### Retrieve data from a contract
+### Retrieve state from a contract
 
-In this case we assume that there is a contract `con_testing` that has a variable called `test`
+In this case we assume that there is a token contract `con_testing` that has a variable called `balances` which is a Hash class and holds the balances
 
 ```python
 from xian_py.xian import Xian
 
 xian = Xian('http://<node IP>:26657')
-tx = xian.get_contract_data('con_testing', 'test')
+tx = xian.get_state('con_testing', 'balances', '8bf21c7dc3a4ff32996bf56a665e1efe3c9261cc95bbf82552c328585c863829')
+print(f'data: {tx}')
+```
+
+### Retrieve the source code of a contract
+
+In this case we assume that there is a contract `con_testing`
+
+```python
+from xian_py.xian import Xian
+
+xian = Xian('http://<node IP>:26657')
+tx = xian.get_contract('con_testing')
+print(f'data: {tx}')
+```
+
+If you want to clean the code up so that it doesn't have trailing double underscores, you can use the parameter `clean=True`
+
+```python
+from xian_py.xian import Xian
+
+xian = Xian('http://<node IP>:26657')
+tx = xian.get_contract('con_testing', clean=True)
 print(f'data: {tx}')
 ```
 
