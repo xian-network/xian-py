@@ -159,7 +159,7 @@ class Xian:
     def get_contract_data(
             self,
             contract: str,
-            variable: str,
+            variable: str = None,
             *keys: str) -> None | int | float | dict | str:
         """ Retrieve contract data and decode it """
 
