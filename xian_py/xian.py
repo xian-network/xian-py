@@ -163,8 +163,11 @@ class Xian:
             *keys: str) -> None | int | float | dict | str:
         """ Retrieve contract data and decode it """
 
-        path = f'/get/{contract}.{variable}'
-        path = f'{path}:{":".join(keys)}' if keys else path
+        path = f'/get/{contract}'
+
+        if variable:
+            path = f'{path}.{variable}'
+            path = f'{path}:{":".join(keys)}' if keys else path
 
         try:
             r = requests.get(f'{self.node_url}/abci_query?path="{path}"')
