@@ -251,7 +251,7 @@ print(f'tx_hash: {send["tx_hash"]}')
 
 ### Send a transaction - Low level usage
 
-There are different way to submit a transaction:
+There are different ways to submit a transaction:
 - `broadcast_tx_async` --> Only submit, no result will be returned
 - `broadcast_tx_sync` --> Submit and return transaction validation result
 - `broadcast_tx_commit` --> Submit and return result of transaction validation and processing
@@ -260,7 +260,7 @@ Do NOT use `broadcast_tx_commit` in production!
 
 ```python
 from xian_py.wallet import Wallet
-from xian_py.transactions import get_nonce, create_tx, broadcast_tx_sync
+from xian_py.transaction import get_nonce, create_tx, broadcast_tx_sync
 
 node_url = "http://<node IP>:26657"
 wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
