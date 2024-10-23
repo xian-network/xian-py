@@ -2,7 +2,7 @@ import ast
 import requests
 
 import xian_py.utils as utl
-import xian_py.transactions as tr
+import xian_py.transaction as tr
 
 from xian_py.exception import XianException
 from xian_py.wallet import Wallet
@@ -72,7 +72,8 @@ class Xian:
             contract: str,
             function: str,
             kwargs: dict,
-            stamps: str | int = 0,
+            stamps: int = 0,
+            nonce: int = None,
             chain_id: str = None,
             synchronous: bool = True) -> Optional[dict]:
         """ Send a transaction to the network """
@@ -81,35 +82,32 @@ class Xian:
             if self.chain_id:
                 chain_id = self.chain_id
 
-        if stamps == 0:
-            stamps = tr.calculate_stamps(
-                self.node_url,
-                tr.create_tx(
-                    contract=contract,
-                    function=function,
-                    kwargs=kwargs,
-                    stamps=int(stamps),
-                    chain_id=chain_id,
-                    private_key=self.wallet.private_key,
-                    nonce=tr.get_nonce(
-                        self.node_url,
-                        self.wallet.public_key
-                    )
-                )
-            )
-
-        tx = tr.create_tx(
-            contract=contract,
-            function=function,
-            kwargs=kwargs,
-            stamps=int(stamps),
-            chain_id=chain_id,
-            private_key=self.wallet.private_key,
-            nonce=tr.get_nonce(
+        if nonce is None:
+            nonce = tr.get_nonce(
                 self.node_url,
                 self.wallet.public_key
             )
-        )
+
+        payload = {
+            "chain_id": chain_id,
+            "contract": contract,
+            "function": function,
+            "kwargs": kwargs,
+            "nonce": nonce,
+            "sender": self.wallet.public_key,
+            "stamps_supplied": stamps
+        }
+
+        if stamps == 0:
+            simulated_tx = tr.simulate_tx(
+                self.node_url,
+                payload
+            )
+
+            stamps = simulated_tx['stamps_used']
+            payload['stamps_supplied'] = stamps
+
+        tx = tr.create_tx(payload, self.wallet)
 
         if synchronous:
             data = tr.broadcast_tx_sync(self.node_url, tx)
@@ -141,19 +139,13 @@ class Xian:
             self,
             amount: int | float | str,
             to_address: str,
-            token: str = "currency",
-            stamps: int | str = 0,
-            chain_id: str = None,
-            synchronous: bool = True) -> Optional[dict]:
+            token: str = "currency") -> dict:
         """ Send a token to a given address """
 
         return self.send_tx(
             token,
             "transfer",
-            {"amount": float(amount), "to": to_address},
-            stamps,
-            chain_id,
-            synchronous
+            {"amount": float(amount), "to": to_address}
         )
 
     def get_state(
@@ -238,18 +230,13 @@ class Xian:
             self,
             contract: str,
             token: str = "currency",
-            amount: int | float | str = 900000000000,
-            chain_id: str = None,
-            synchronous: bool = True) -> Optional[dict]:
+            amount: int | float | str = 999999999999) -> dict:
         """ Approve smart contract to spend max token amount """
 
         return self.send_tx(
             token,
             "approve",
-            {"amount": float(amount), "to": contract},
-            0,
-            chain_id,
-            synchronous
+            {"amount": float(amount), "to": contract}
         )
 
     def submit_contract(
@@ -257,10 +244,8 @@ class Xian:
             name: str,
             code: str,
             args: dict = None,
-            stamps: str | int = 0,
-            chain_id: str = None,
-            synchronous: bool = True) -> Optional[dict]:
-        """ Deploy a contract to the network """
+            stamps: int = 0) -> dict:
+        """ Submit a contract to the network """
 
         kwargs = dict()
         kwargs['name'] = name
@@ -273,9 +258,7 @@ class Xian:
             'submission',
             'submit_contract',
             kwargs,
-            stamps,
-            chain_id,
-            synchronous
+            stamps
         )
 
     def get_nodes(self) -> list:
