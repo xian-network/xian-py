@@ -62,7 +62,7 @@ def simulate_tx(node_url: str, payload: dict) -> dict:
     encoded = json.dumps(payload).encode().hex()
 
     try:
-        r = requests.post(f'{node_url}/abci_query?path="/calculate_stamps/{encoded}"')
+        r = requests.post(f'{node_url}/abci_query?path="/simulate_tx/{encoded}"')
         r.raise_for_status()
         data = r.json()
     except Exception as e:
