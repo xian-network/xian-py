@@ -57,12 +57,12 @@ def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> dict:
     return data
 
 
-def calculate_stamps(node_url: str, tx: dict) -> int:
+def simulate_tx(node_url: str, payload: dict) -> dict:
     """ Estimate the amount of stamps a tx will cost """
-    payload = json.dumps(tx).encode().hex()
+    encoded = json.dumps(payload).encode().hex()
 
     try:
-        r = requests.post(f'{node_url}/abci_query?path="/calculate_stamps/{payload}"')
+        r = requests.post(f'{node_url}/abci_query?path="/simulate_tx/{encoded}"')
         r.raise_for_status()
         data = r.json()
     except Exception as e:
@@ -73,43 +73,23 @@ def calculate_stamps(node_url: str, tx: dict) -> int:
     if res['code'] != 0:
         raise XianException(res['log'])
 
-    decoded_json = json.loads(decode_str(res['value']))
-    stamps = decoded_json['stamps_used']
-
-    return int(stamps)
+    return json.loads(decode_str(res['value']))
 
 
-def create_tx(
-        contract: str,
-        function: str,
-        kwargs: dict,
-        stamps: int,
-        chain_id: str,
-        private_key: str,
-        nonce: int) -> dict:
+def create_tx(payload: dict, wallet: Wallet) -> dict:
     """
     Create offline transaction that can be broadcast
-    :param contract: Contract name to be executed
-    :param function: Function name to be executed
-    :param kwargs: Arguments for function
-    :param stamps: Max amount of stamps to use
-    :param chain_id: Network ID
-    :param private_key: Private key to sign with
-    :param nonce: Unique continuous number
+    :param payload: Transaction payload with following keys:
+        chain_id: Network ID
+        contract: Contract name to be executed
+        function: Function name to be executed
+        kwargs: Arguments for function
+        nonce: Unique continuous number
+        sender: Wallet address of sender
+        stamps: Max amount of stamps to use
+    :param wallet: Wallet object with public and private key
     :return: Encoded transaction data
     """
-    wallet = Wallet(private_key)
-
-    payload = {
-        "chain_id": chain_id,
-        "contract": contract,
-        "function": function,
-        "kwargs": kwargs,
-        "nonce": nonce,
-        "sender": wallet.public_key,
-        "stamps_supplied": stamps
-    }
-
     payload = format_dictionary(payload)
     assert check_format_of_payload(payload), "Invalid payload provided!"
 
