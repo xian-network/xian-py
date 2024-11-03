@@ -251,7 +251,7 @@ print(f'tx_hash: {send["tx_hash"]}')
 
 ### Send a transaction - Low level usage
 
-There are different way to submit a transaction:
+There are different ways to submit a transaction:
 - `broadcast_tx_async` --> Only submit, no result will be returned
 - `broadcast_tx_sync` --> Submit and return transaction validation result
 - `broadcast_tx_commit` --> Submit and return result of transaction validation and processing
@@ -259,31 +259,65 @@ There are different way to submit a transaction:
 Do NOT use `broadcast_tx_commit` in production!
 
 ```python
+from xian_py.xian import Xian
 from xian_py.wallet import Wallet
-from xian_py.transactions import get_nonce, create_tx, broadcast_tx_sync
+from xian_py.transaction import get_nonce, create_tx, broadcast_tx_sync
 
 node_url = "http://<node IP>:26657"
 wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
+xian = Xian(node_url, wallet=wallet)
 
-next_nonce = get_nonce(node_url, wallet.public_key)
-print(f'next nonce: {next_nonce}')
-
-tx = create_tx(
-    contract="currency",
-    function="transfer",
-    kwargs={
+payload = {
+    "chain_id": xian.get_chain_id(),
+    "contract": "currency",
+    "function": "transfer",
+    "kwargs": {
         "to": "burned",
         "amount": 100,
     },
-    nonce=next_nonce,
-    stamps=100,
-    chain_id='some-chain-id',
-    private_key=wallet.private_key
-)
+    "nonce": get_nonce(node_url, wallet.public_key),
+    "sender": wallet.public_key,
+    "stamps_supplied": 50
+}
+
+tx = create_tx(payload, wallet)
 print(f'tx: {tx}')
 
 # Return result of transaction validation
 data = broadcast_tx_sync(node_url, tx)
-print(f'success: {data["success"]}')
-print(f'tx_hash: {data["tx_hash"]}')
+print(f'data: {data}')
+```
+
+### Simulate a transaction
+
+You can simulate a transaction by supplying a payload. It will return the resulting state changes and the used stamps. 
+
+```python
+from xian_py.xian import Xian
+from xian_py.wallet import Wallet
+from xian_py.transaction import get_nonce, create_tx, broadcast_tx_sync
+
+node_url = "http://<node IP>:26657"
+wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
+xian = Xian(node_url, wallet=wallet)
+
+payload = {
+    "chain_id": xian.get_chain_id(),
+    "contract": "currency",
+    "function": "transfer",
+    "kwargs": {
+        "to": "burned",
+        "amount": 100,
+    },
+    "nonce": get_nonce(node_url, wallet.public_key),
+    "sender": wallet.public_key,
+    "stamps_supplied": 50
+}
+
+tx = create_tx(payload, wallet)
+print(f'tx: {tx}')
+
+# Return result of transaction validation
+data = broadcast_tx_sync(node_url, tx)
+print(f'data: {data}')
 ```
