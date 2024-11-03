@@ -96,7 +96,7 @@ def create_tx(payload: dict, wallet: Wallet) -> dict:
     tx = {
         "payload": payload,
         "metadata": {
-            "signature": wallet.sign_msg(encode(payload))
+            "signature": wallet.sign_msg(json.dumps(payload))
         }
     }
 
