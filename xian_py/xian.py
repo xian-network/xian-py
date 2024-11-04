@@ -139,13 +139,15 @@ class Xian:
             self,
             amount: int | float | str,
             to_address: str,
-            token: str = "currency") -> dict:
+            token: str = "currency",
+            stamps: int = 0) -> dict:
         """ Send a token to a given address """
 
         return self.send_tx(
             token,
             "transfer",
-            {"amount": float(amount), "to": to_address}
+            {"amount": float(amount), "to": to_address},
+            stamps=stamps
         )
 
     def get_state(
