@@ -50,6 +50,53 @@ signed = wallet.sign_msg(message)
 print(f'Signed message: {signed}')
 ```
 
+# HDWallet
+
+### Create new hierarchical-deterministic (HD) wallet
+```python
+from xian_py.wallet import HDWallet
+
+# Create wallet from scratch
+hd_wallet = HDWallet()
+
+# Output mnemonic seed
+print(f'Mnemonic: {hd_wallet.mnemonic}')
+```
+
+### Create hierarchical-deterministic (HD) wallet from existing mnemonic seed
+```python
+from xian_py.wallet import HDWallet
+
+mnemonic = seed = 'dynamic kitchen omit dinosaur found trend video morning oppose staff bid honey rigid raise fruit pond time license enough alarm place head canoe auto'
+
+# Create wallet from existing mnemonic seed
+hd_wallet = HDWallet(mnemonic)
+
+# Output mnemonic seed
+print(f'Mnemonic: {hd_wallet.mnemonic}')
+```
+
+### Retrieve wallets based on derivation path
+```python
+from xian_py.wallet import HDWallet
+
+hd_wallet = HDWallet()
+
+# Define derivation path m/44'/0'/0'/0'/0'
+derivation_path = [44, 0, 0, 0, 0]
+
+# Retrieve Wallet 0
+wallet0 = hd_wallet.get_wallet(derivation_path)
+print(f"Wallet 0 Public Key: {wallet0.public_key}")
+print(f"Wallet 0 Secret Key: {wallet0.private_key}")
+
+# Derivation path m/44'/0'/0'/0'/1'
+derivation_path = [44, 0, 0, 0, 1]
+wallet1 = hd_wallet.get_wallet(derivation_path)
+print(f"Wallet 1 Public Key: {wallet1.public_key}")
+print(f"Wallet 1 Secret Key: {wallet1.private_key}")
+```
+
 # Xian
 
 ### Send XIAN tokens
