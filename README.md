@@ -368,3 +368,23 @@ print(f'tx: {tx}')
 data = broadcast_tx_sync(node_url, tx)
 print(f'data: {data}')
 ```
+
+### Encrypt and decrypt a message
+
+You can encrypt a text with the public key simulate a transaction by supplying a payload. It will return the resulting state changes and the used stamps. 
+
+```python
+from xian_py.wallet import Wallet, encrypt_msg, decrypt_msg
+
+msg = "Lorem Ipsum is simply dummy text of the printing and typesetting industry."
+
+wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
+print(f'address: {wallet.public_key}')
+print(f'privkey: {wallet.private_key}')
+
+encrypted_msg = encrypt_msg(wallet.public_key, msg)
+print(f'encrypted msg: {encrypted_msg}')
+
+decrypted_msg = decrypt_msg(wallet.private_key, encrypted_msg)
+print(f'decrypted msg: {decrypted_msg}')
+```
