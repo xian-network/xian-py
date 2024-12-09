@@ -2,9 +2,7 @@ import secrets
 
 from bip_utils.utils.mnemonic import Mnemonic
 from nacl.signing import SigningKey, VerifyKey
-from nacl.public import SealedBox, PublicKey
 from nacl.exceptions import BadSignatureError
-from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 
 from bip_utils import (
     Bip39MnemonicGenerator,
@@ -12,28 +10,6 @@ from bip_utils import (
     Bip39WordsNum,
     Bip32Slip10Ed25519
 )
-
-def encrypt_msg(receiver_public_key: str, cleartext_msg: str) -> str:
-    """ Encrypts message. Requires receiver's public key """
-    # Convert Ed25519 public key to X25519 public key
-    ed25519_pk_bytes = bytes.fromhex(receiver_public_key)
-    x25519_pk_bytes = crypto_sign_ed25519_pk_to_curve25519(ed25519_pk_bytes)
-    x25519_pk = PublicKey(x25519_pk_bytes)
-
-    sealed_box = SealedBox(x25519_pk)
-    encrypted = sealed_box.encrypt(cleartext_msg.encode('utf-8'))
-    return encrypted.hex()
-
-def decrypt_msg(receiver_private_key: str, encrypted_msg: str) -> str:
-    """ Decrypt message. Requires receiver's private key """
-    # Convert Ed25519 private key (seed) to X25519 private key
-    ed25519_seed = bytes.fromhex(receiver_private_key)
-    sk = SigningKey(ed25519_seed)
-    x25519_sk = sk.to_curve25519_private_key()
-
-    sealed_box = SealedBox(x25519_sk)
-    plaintext = sealed_box.decrypt(bytes.fromhex(encrypted_msg))
-    return plaintext.decode('utf-8')
 
 def verify_msg(public_key: str, msg: str, signature: str) -> bool:
     """ Verify signed message by public key """

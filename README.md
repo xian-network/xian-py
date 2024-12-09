@@ -371,20 +371,83 @@ print(f'data: {data}')
 
 ### Encrypt and decrypt a message
 
-You can encrypt a text with the public key simulate a transaction by supplying a payload. It will return the resulting state changes and the used stamps. 
+One-way encryption: Encrypt a text with the public key of the recipient. Only the recipient can decrypt the encrypted text with his private key.
 
 ```python
-from xian_py.wallet import Wallet, encrypt_msg, decrypt_msg
+from xian_py.wallet import Wallet
+from xian_py.crypto import encrypt_single_recipient, decrypt_single_recipient
 
-msg = "Lorem Ipsum is simply dummy text of the printing and typesetting industry."
+msg = "This is a Test"
 
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-print(f'address: {wallet.public_key}')
-print(f'privkey: {wallet.private_key}')
+sender_wallet = Wallet()
 
-encrypted_msg = encrypt_msg(wallet.public_key, msg)
+print('sender wallet')
+print(f'address: {sender_wallet.public_key}')
+print(f'privkey: {sender_wallet.private_key}')
+print('')
+
+receiver_wallet = Wallet()
+
+print('receiver wallet')
+print(f'address: {receiver_wallet.public_key}')
+print(f'privkey: {receiver_wallet.private_key}')
+
+encrypted_msg = encrypt_single_recipient(receiver_wallet.public_key, msg)
 print(f'encrypted msg: {encrypted_msg}')
 
-decrypted_msg = decrypt_msg(wallet.private_key, encrypted_msg)
+decrypted_msg = decrypt_single_recipient(receiver_wallet.private_key, encrypted_msg)
 print(f'decrypted msg: {decrypted_msg}')
+
+# Let's make sure that the decrypted text matches the original text
+assert msg == decrypted_msg, 'ERROR'
+```
+
+Two-way encryption: Encrypt a text with the private key of the sender and the public key of the recipient. The encrypted text can then be decrypted either by the private key of the sender and the public key of the recipient or with the private key of the recipient and the public key of the sender.
+
+```python
+from xian_py.wallet import Wallet
+from xian_py.crypto import (
+    encrypt_mutual_auth,
+    decrypt_mutual_auth_as_sender,
+    decrypt_mutual_auth_as_receiver
+)
+
+msg = "This is a Test"
+
+sender_wallet = Wallet()
+
+print('sender wallet')
+print(f'address: {sender_wallet.public_key}')
+print(f'privkey: {sender_wallet.private_key}')
+print('')
+
+receiver_wallet = Wallet()
+
+print('receiver wallet')
+print(f'address: {receiver_wallet.public_key}')
+print(f'privkey: {receiver_wallet.private_key}')
+
+msg_encrypted = encrypt_mutual_auth(
+    sender_wallet.private_key, 
+    receiver_wallet.public_key, 
+    msg
+)
+print(f'msg encrypted: {msg_encrypted}')
+
+msg_decrypted_sender = decrypt_mutual_auth_as_sender(
+    sender_wallet.private_key, 
+    receiver_wallet.public_key, 
+    msg_encrypted
+)
+print(f'msg decrypted by sender: {msg_decrypted_sender}')
+
+msg_decrypted_receiver = decrypt_mutual_auth_as_receiver(
+    sender_wallet.public_key, 
+    receiver_wallet.private_key, 
+    msg_encrypted
+)
+print(f'msg decrypted by receiver: {msg_decrypted_receiver}')
+
+# Let's make sure that both decrypted texts match the original text
+assert msg == msg_decrypted_sender == msg_decrypted_receiver, 'ERROR'
 ```
