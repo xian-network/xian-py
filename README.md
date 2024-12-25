@@ -342,31 +342,28 @@ You can simulate a transaction by supplying a payload. It will return the result
 ```python
 from xian_py.xian import Xian
 from xian_py.wallet import Wallet
-from xian_py.transaction import get_nonce, create_tx, broadcast_tx_sync
+from xian_py.transaction import get_nonce, simulate_tx
 
 node_url = "http://<node IP>:26657"
 wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
 xian = Xian(node_url, wallet=wallet)
 
 payload = {
-    "chain_id": xian.get_chain_id(),
     "contract": "currency",
     "function": "transfer",
-    "kwargs": {
-        "to": "burned",
-        "amount": 100,
+    "kwargs":
+    {
+        "to": "8bf21c7dc3a4ff32996bf56a665e1efe3c9261cc95bbf82552c328585c863829",
+        "amount": 1.11,
     },
     "nonce": get_nonce(node_url, wallet.public_key),
-    "sender": wallet.public_key,
-    "stamps_supplied": 50
+    "stamps": 0,
+    "chain_id": xian.get_chain_id(),
+    "sender": wallet.public_key
 }
 
-tx = create_tx(payload, wallet)
-print(f'tx: {tx}')
-
-# Return result of transaction validation
-data = broadcast_tx_sync(node_url, tx)
-print(f'data: {data}')
+simulated_tx = simulate_tx(node_url, payload)
+print(f'simulated tx: {simulated_tx}')
 ```
 
 ### Encrypt and decrypt a message
