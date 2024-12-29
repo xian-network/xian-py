@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "xian-py"
-version = "0.3.3"
+version = "0.3.4"
 description = "Python tools to interact with the Xian blockchain"
 authors = ["endogen"]
 license = "MIT"
@@ -11,6 +11,7 @@ python = "^3.11"
 PyNaCl = "^1.5.0"
 requests = "^2.31.0"
 bip-utils = "^2.9.3"
+astor = "^0.8.1"
 
 
 [build-system]

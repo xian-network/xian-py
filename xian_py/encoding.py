@@ -1,4 +1,5 @@
 import json
+import base64
 import decimal
 
 from xian_py.xian_datetime import Datetime, Timedelta
@@ -38,6 +39,24 @@ class Encoder(json.JSONEncoder):
         return super().default(o)
 
 
+# TODO: This was initially done for MongoDB. Maybe we can now adjust that
+# JSON library from Python 3 doesn't let you instantiate your custom Encoder. You have to pass it as an obj to json
+def encode(data: [str, int, dict]):
+    """ NOTE:
+    Normally encoding behavior is overriden in 'default' method inside
+    a class derived from json.JSONEncoder. Unfortunately this can be done only
+    for custom types.
+
+    Due to MongoDB integer limitation (8 bytes), we need to preprocess 'big' integers.
+    """
+    if isinstance(data, int):
+        data = encode_int(data)
+    elif isinstance(data, dict):
+        data = encode_ints_in_dict(data)
+
+    return json.dumps(data, cls=Encoder, separators=(',', ':'))
+
+
 def encode_int(value: int):
     if MIN_INT < value < MAX_INT:
         return value
@@ -45,6 +64,18 @@ def encode_int(value: int):
     return {
         '__big_int__': str(value)
     }
+
+
+def encode_kv(key, value):
+    # if key is None:
+    #     key = ''
+    #
+    # if value is None:
+    #     value = ''
+
+    k = key.encode()
+    v = encode(value).encode()
+    return k, v
 
 
 def encode_ints_in_dict(data: dict):
@@ -67,24 +98,6 @@ def encode_ints_in_dict(data: dict):
             d[k] = v
 
     return d
-
-
-# TODO: This was initially done for MongoDB. Maybe we can now adjust that
-# JSON library from Python 3 doesn't let you instantiate your custom Encoder. You have to pass it as an obj to json
-def encode(data: [str, int, dict]):
-    """ NOTE:
-    Normally encoding behavior is overriden in 'default' method inside
-    a class derived from json.JSONEncoder. Unfortunately this can be done only
-    for custom types.
-
-    Due to MongoDB integer limitation (8 bytes), we need to preprocess 'big' integers.
-    """
-    if isinstance(data, int):
-        data = encode_int(data)
-    elif isinstance(data, dict):
-        data = encode_ints_in_dict(data)
-
-    return json.dumps(data, cls=Encoder, separators=(',', ':'))
 
 
 def as_object(d):
@@ -115,17 +128,15 @@ def decode(data):
     except json.decoder.JSONDecodeError as e:
         return None
 
+def decode_dict(encoded_dict: str) -> dict:
+    decoded_data = decode_str(encoded_dict)
+    decoded_tx = bytes.fromhex(decoded_data).decode('utf-8')
+    return json.loads(decoded_tx)
 
-def encode_kv(key, value):
-    # if key is None:
-    #     key = ''
-    #
-    # if value is None:
-    #     value = ''
 
-    k = key.encode()
-    v = encode(value).encode()
-    return k, v
+def decode_str(encoded_data: str) -> str:
+    decoded_bytes = base64.b64decode(encoded_data)
+    return decoded_bytes.decode('utf-8')
 
 
 def decode_kv(key, value):

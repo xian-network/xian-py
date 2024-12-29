@@ -3,6 +3,7 @@ import requests
 
 import xian_py.utils as utl
 import xian_py.transaction as tr
+from xian_py.decompiler import ContractDecompiler
 
 from xian_py.exception import XianException
 from xian_py.wallet import Wallet
@@ -211,8 +212,10 @@ class Xian:
 
         code = utl.decode_str(byte_string)
 
-        if not clean: return code
-        return utl.remove_trailing_double_underscores(code)
+        if clean:
+            return ContractDecompiler().decompile(code)
+        else:
+            return code
 
     def get_approved_amount(
             self,
