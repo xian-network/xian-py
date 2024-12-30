@@ -1,9 +1,9 @@
 import ast
 import requests
 
-import xian_py.utils as utl
 import xian_py.transaction as tr
 from xian_py.decompiler import ContractDecompiler
+from xian_py.encoding import decode_str
 
 from xian_py.exception import XianException
 from xian_py.wallet import Wallet
@@ -56,7 +56,7 @@ class Xian:
         elif balance_byte_string == 'AA==':
             return 0
 
-        balance = utl.decode_str(balance_byte_string)
+        balance = decode_str(balance_byte_string)
 
         if balance.isdigit():
             balance = int(balance)
@@ -174,7 +174,7 @@ class Xian:
         if byte_string is None or byte_string == 'AA==':
             return None
 
-        data = utl.decode_str(byte_string)
+        data = decode_str(byte_string)
 
         try:
             return int(data)
@@ -210,7 +210,7 @@ class Xian:
         if byte_string is None or byte_string == 'AA==':
             return None
 
-        code = utl.decode_str(byte_string)
+        code = decode_str(byte_string)
 
         if clean:
             return ContractDecompiler().decompile(code)

@@ -2,10 +2,9 @@ import requests
 import json
 
 from xian_py.wallet import Wallet
-from xian_py.utils import decode_dict, decode_str
+from xian_py.encoding import encode, decode_dict, decode_str
 from xian_py.formating import format_dictionary, check_format_of_payload
 from xian_py.exception import XianException
-from xian_py.encoding import encode
 
 
 def get_nonce(node_url: str, address: str) -> int:
