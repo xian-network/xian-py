@@ -1,450 +1,237 @@
-### How to install
+# xian-py
 
-```python
+Python SDK for interacting with the Xian blockchain network. This library provides comprehensive tools for wallet management, transaction handling, and smart contract interactions.
+
+## Table of Contents
+- [Installation](#installation)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Usage Guide](#usage-guide)
+  - [Wallet Management](#wallet-management)
+  - [HD Wallet Operations](#hd-wallet-operations)
+  - [Blockchain Interactions](#blockchain-interactions)
+  - [Smart Contract Operations](#smart-contract-operations)
+  - [Transaction Management](#transaction-management)
+  - [Cryptography Utilities](#cryptography-utilities)
+
+## Installation
+
+```bash
 pip install xian-py
 ```
 
-# Wallet
+## Features
 
-### Create new wallet
-```python
-from xian_py.wallet import Wallet
+- Basic and HD wallet creation and management using Ed25519 cryptography
+- BIP39 mnemonic seed generation and recovery (24 words)
+- BIP32/SLIP-0010 compliant hierarchical deterministic wallets
+- Message signing and verification
+- Transaction creation, simulation, and broadcasting
+- Smart contract deployment and interaction
+- Token transfers and balance queries
+- Asynchronous and synchronous transaction submission
+- Read-only contract execution
 
-# Create wallet from scratch
-wallet = Wallet()
-```
+## Quick Start
 
-### Create wallet from existing private key
-```python
-from xian_py.wallet import Wallet
-
-# Create wallet from existing private key
-privkey = 'ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8'
-wallet = Wallet(privkey)
-```
-
-### Get private key and public key
-```python
-from xian_py.wallet import Wallet
-
-wallet = Wallet()
-
-# Public key
-address = wallet.public_key
-print(f'address: {address}')
-
-# Private key
-privkey = wallet.private_key
-print(f'private key: {privkey}')
-```
-
-### Sign message with private key
-```python
-from xian_py.wallet import Wallet
-
-wallet = Wallet()
-
-# Sign message with private key
-message = 'I will sign this message'
-signed = wallet.sign_msg(message)
-print(f'Signed message: {signed}')
-```
-
-# HDWallet
-
-### Create new hierarchical-deterministic (HD) wallet
-```python
-from xian_py.wallet import HDWallet
-
-# Create wallet from scratch
-hd_wallet = HDWallet()
-
-# Output mnemonic seed
-print(f'Mnemonic: {hd_wallet.mnemonic}')
-```
-
-### Create hierarchical-deterministic (HD) wallet from existing mnemonic seed
-```python
-from xian_py.wallet import HDWallet
-
-mnemonic = seed = 'dynamic kitchen omit dinosaur found trend video morning oppose staff bid honey rigid raise fruit pond time license enough alarm place head canoe auto'
-
-# Create wallet from existing mnemonic seed
-hd_wallet = HDWallet(mnemonic)
-
-# Output mnemonic seed
-print(f'Mnemonic: {hd_wallet.mnemonic}')
-```
-
-### Retrieve wallets based on derivation path
-```python
-from xian_py.wallet import HDWallet
-
-hd_wallet = HDWallet()
-
-# Define derivation path m/44'/0'/0'/0'/0'
-derivation_path = [44, 0, 0, 0, 0]
-
-# Retrieve Wallet 0
-wallet0 = hd_wallet.get_wallet(derivation_path)
-print(f"Wallet 0 Public Key: {wallet0.public_key}")
-print(f"Wallet 0 Secret Key: {wallet0.private_key}")
-
-# Derivation path m/44'/0'/0'/0'/1'
-derivation_path = [44, 0, 0, 0, 1]
-wallet1 = hd_wallet.get_wallet(derivation_path)
-print(f"Wallet 1 Public Key: {wallet1.public_key}")
-print(f"Wallet 1 Secret Key: {wallet1.private_key}")
-```
-
-# Xian
-
-### Send XIAN tokens
 ```python
 from xian_py.wallet import Wallet
 from xian_py.xian import Xian
 
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', wallet=wallet)
+# Create a new wallet
+wallet = Wallet()
+print(f"Address: {wallet.public_key}")
 
-send_xian = xian.send(
+# Initialize Xian client
+xian = Xian('http://your-node-ip:26657', wallet=wallet)
+
+# Send XIAN tokens
+result = xian.send(
     amount=7,
     to_address='b6504cf056e264a4c1932d5de6893d110db5459ab4f742eb415d98ed989bb988'
 )
-
-print(f'success: {send_xian["success"]}')
-print(f'tx_hash: {send_xian["tx_hash"]}')
 ```
 
-### Submit contract
+## Usage Guide
+
+### Wallet Management
+
+The SDK provides two types of wallets: basic `Wallet` and hierarchical deterministic `HDWallet`.
+
+#### Basic Wallet Operations
+
 ```python
 from xian_py.wallet import Wallet
-from xian_py.xian import Xian
 
+# Create new wallet with random seed
+wallet = Wallet()
+
+# Create from existing private key
 wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', wallet=wallet)
 
-# Contract code
+# Access wallet details
+print(f'Public Key: {wallet.public_key}')
+print(f'Private Key: {wallet.private_key}')
+
+# Sign and verify messages
+message = "Hello Xian"
+signature = wallet.sign_msg(message)
+is_valid = verify_msg(wallet.public_key, message, signature)
+```
+
+### HD Wallet Operations
+
+The HD wallet implementation follows BIP39, BIP32, and SLIP-0010 standards for Ed25519 keys.
+
+```python
+from xian_py.wallet import HDWallet
+
+# Create new HD wallet with 24-word mnemonic
+hd_wallet = HDWallet()
+print(f'Mnemonic: {hd_wallet.mnemonic_str}')  # Space-separated words
+print(f'Words: {hd_wallet.mnemonic_lst}')     # List of words
+
+# Create from existing mnemonic
+mnemonic = 'dynamic kitchen omit dinosaur found trend video morning oppose staff bid honey...'
+hd_wallet = HDWallet(mnemonic)
+
+# Derive child wallets (keys are automatically hardened)
+path = [44, 0, 0, 0, 0]  # m/44'/0'/0'/0'/0'
+wallet0 = hd_wallet.get_wallet(path)
+```
+
+### Blockchain Interactions
+
+#### Token Operations
+
+```python
+# Initialize client
+xian = Xian('http://node-ip:26657', wallet=wallet)
+
+# Check balance
+balance = xian.get_balance('address')
+
+# Send tokens with automatic stamp calculation
+result = xian.send(amount=10, to_address='recipient_address')
+
+# Check custom token balance
+token_balance = xian.get_balance('contract_address', contract='token_contract')
+```
+
+### Smart Contract Operations
+
+#### Contract Deployment and Interaction
+
+```python
+# Deploy contract
 code = '''
-I = importlib
-
 @export
-def send(addresses: list, amount: float, contract: str):
-    token = I.import_module(contract)
-
-    for address in addresses:
-        token.transfer_from(amount=amount, to=address, main_account=ctx.signer)
+def greet(name: str):
+    return f"Hello, {name}!"
 '''
+result = xian.submit_contract('greeting_contract', code)
 
-# Deploy contract to network
-submit = xian.submit_contract('con_multisend', code)
+# Read-only contract execution
+args = {'name': 'World'}
+response = xian.execute_read_only('greeting_contract', 'greet', args)
 
-print(f'success: {submit["success"]}')
-print(f'tx_hash: {submit["tx_hash"]}')
+# Get contract state
+state = xian.get_state('contract_name', 'variable_name', 'key')
+
+# Get and decompile contract source
+source = xian.get_contract('contract_name', clean=True)
 ```
 
-### Submit contract with constructor arguments
-```python
-from xian_py.wallet import Wallet
-from xian_py.xian import Xian
+### Transaction Management
 
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', wallet=wallet)
-
-# Contract code
-code = '''
-test = Variable()
-
-@construct
-def init(test_var: str):
-    test.set(test_var)
-
-@export
-def test():
-    return test.get()
-'''
-
-# Constructor arguments
-arguments = {
-    'test_var': '12345'
-}
-
-# Deploy contract to network and pass arguments to it
-submit = xian.submit_contract('con_multisend', code, args=arguments)
-
-print(f'success: {submit["success"]}')
-print(f'tx_hash: {submit["tx_hash"]}')
-```
-
-### Approve contract and retrieve approved amount
-```python
-from xian_py.wallet import Wallet
-from xian_py.xian import Xian
-
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', wallet=wallet)
-
-# Get approved amount
-approved = xian.get_approved_amount('con_multisend')
-print(f'approved: {approved}')
-
-# Approve the default amount
-approve = xian.approve('con_multisend')
-print(f'approve success: {approve["success"]}')
-print(f'approve tx_hash: {approve["tx_hash"]}')
-
-# Get approved amount again
-approved = xian.get_approved_amount('con_multisend')
-print(f'approved success: {approved["success"]}')
-print(f'approved tx_hash: {approved["tx_hash"]}')
-```
-
-### Get XIAN token balance of an address
-```python
-from xian_py.wallet import Wallet
-from xian_py.xian import Xian
-
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', wallet=wallet)
-
-balance = xian.get_balance('b6504cf056e264a4c1932d5de6893d110db5459ab4f742eb415d98ed989bb988')
-print(f'balance: {balance}')
-```
-
-### Get custom token balance for a contract
-
-Contracts can have token balances and in this example `con_token` is a token contract and we want to check the balance of that token in the contract `con_test_contract`
+#### High-Level Transaction
 
 ```python
-from xian_py.wallet import Wallet
-from xian_py.xian import Xian
-
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', wallet=wallet)
-
-balance = xian.get_balance('con_test_contract', contract='con_token')
-print(f'balance: {balance}')
-```
-
-### Retrieve transaction by hash
-```python
-from xian_py.wallet import Wallet
-from xian_py.xian import Xian
-
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', wallet=wallet)
-
-# Provide tx hash to get tx result
-tx = xian.get_tx('2C403B728E4AFFD656CAFAD38DD3E34C7CC8DA06464A7A5B1E8A426290F505A9')
-print(f'transaction: {tx}')
-```
-
-### Retrieve state from a contract
-
-In this case we assume that there is a token contract `con_testing` that has a variable called `balances` which is a Hash class and holds the balances
-
-```python
-from xian_py.xian import Xian
-
-xian = Xian('http://<node IP>:26657')
-tx = xian.get_state('con_testing', 'balances', '8bf21c7dc3a4ff32996bf56a665e1efe3c9261cc95bbf82552c328585c863829')
-print(f'data: {tx}')
-```
-
-### Retrieve the source code of a contract
-
-In this case we assume that there is a contract `con_testing`
-
-```python
-from xian_py.xian import Xian
-
-xian = Xian('http://<node IP>:26657')
-tx = xian.get_contract('con_testing')
-print(f'data: {tx}')
-```
-
-If you want to clean the code up so that it doesn't have trailing double underscores, you can use the parameter `clean=True`
-
-```python
-from xian_py.xian import Xian
-
-xian = Xian('http://<node IP>:26657')
-tx = xian.get_contract('con_testing', clean=True)
-print(f'data: {tx}')
-```
-
-# Transactions
-
-### Send a transaction - High level usage
-```python
-from xian_py.wallet import Wallet
-from xian_py.xian import Xian
-
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian('http://<node IP>:26657', wallet=wallet)
-
-send = xian.send_tx(
+result = xian.send_tx(
     contract='currency',
     function='transfer',
     kwargs={
-        'to': 'burned',
+        'to': 'recipient',
         'amount': 1000,
     }
 )
-
-print(f'success: {send["success"]}')
-print(f'tx_hash: {send["tx_hash"]}')
 ```
 
-### Send a transaction - Low level usage
-
-There are different ways to submit a transaction:
-- `broadcast_tx_async` --> Only submit, no result will be returned
-- `broadcast_tx_sync` --> Submit and return transaction validation result
-- `broadcast_tx_commit` --> Submit and return result of transaction validation and processing
-
-Do NOT use `broadcast_tx_commit` in production!
+#### Low-Level Transaction with Simulation
 
 ```python
-from xian_py.xian import Xian
-from xian_py.wallet import Wallet
-from xian_py.transaction import get_nonce, create_tx, broadcast_tx_sync
+from xian_py.transaction import get_nonce, create_tx, broadcast_tx_sync, simulate_tx
 
-node_url = "http://<node IP>:26657"
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian(node_url, wallet=wallet)
-
+# Prepare transaction payload
 payload = {
     "chain_id": xian.get_chain_id(),
     "contract": "currency",
     "function": "transfer",
-    "kwargs": {
-        "to": "burned",
-        "amount": 100,
-    },
+    "kwargs": {"to": "recipient", "amount": 100},
     "nonce": get_nonce(node_url, wallet.public_key),
     "sender": wallet.public_key,
-    "stamps_supplied": 50
+    "stamps_supplied": 0
 }
 
+# Simulate to get stamp cost
+simulated = simulate_tx(node_url, payload)
+payload['stamps_supplied'] = simulated['stamps_used']
+
+# Create and broadcast transaction
 tx = create_tx(payload, wallet)
-print(f'tx: {tx}')
-
-# Return result of transaction validation
-data = broadcast_tx_sync(node_url, tx)
-print(f'data: {data}')
+result = broadcast_tx_sync(node_url, tx)
 ```
 
-### Simulate a transaction
+### Cryptography Utilities
 
-You can simulate a transaction by supplying a payload. It will return the resulting state changes and the used stamps. 
+The SDK provides comprehensive cryptographic utilities for message signing, verification, and secure communication between parties.
+
+#### Message Verification and Key Validation
 
 ```python
-from xian_py.xian import Xian
-from xian_py.wallet import Wallet
-from xian_py.transaction import get_nonce, simulate_tx
+from xian_py.wallet import verify_msg, key_is_valid
 
-node_url = "http://<node IP>:26657"
-wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd8')
-xian = Xian(node_url, wallet=wallet)
+# Verify message signature
+is_valid = verify_msg(public_key, message, signature)
 
-payload = {
-    "contract": "currency",
-    "function": "transfer",
-    "kwargs":
-    {
-        "to": "8bf21c7dc3a4ff32996bf56a665e1efe3c9261cc95bbf82552c328585c863829",
-        "amount": 1.11,
-    },
-    "nonce": get_nonce(node_url, wallet.public_key),
-    "stamps": 0,
-    "chain_id": xian.get_chain_id(),
-    "sender": wallet.public_key
-}
-
-simulated_tx = simulate_tx(node_url, payload)
-print(f'simulated tx: {simulated_tx}')
+# Validate key format
+is_valid_key = key_is_valid(key_string)  # Works for both public and private keys
 ```
 
-### Encrypt and decrypt a message
+#### Two-Way Message Encryption
 
-One-way encryption: Encrypt a text with the public key of the recipient. Only the recipient can decrypt the encrypted text with his private key.
+Messages can be encrypted using the sender's private key and recipient's public key. The encrypted message can then be decrypted by either party using their respective keys.
 
 ```python
 from xian_py.wallet import Wallet
-from xian_py.crypto import encrypt_single_recipient, decrypt_single_recipient
+from xian_py.crypto import encrypt, decrypt_as_sender, decrypt_as_receiver
 
-msg = "This is a Test"
-
+# Create sender and receiver wallets
 sender_wallet = Wallet()
-
-print('sender wallet')
-print(f'address: {sender_wallet.public_key}')
-print(f'privkey: {sender_wallet.private_key}')
-print('')
-
 receiver_wallet = Wallet()
 
-print('receiver wallet')
-print(f'address: {receiver_wallet.public_key}')
-print(f'privkey: {receiver_wallet.private_key}')
-
-encrypted_msg = encrypt_single_recipient(receiver_wallet.public_key, msg)
-print(f'encrypted msg: {encrypted_msg}')
-
-decrypted_msg = decrypt_single_recipient(receiver_wallet.private_key, encrypted_msg)
-print(f'decrypted msg: {decrypted_msg}')
-
-# Let's make sure that the decrypted text matches the original text
-assert msg == decrypted_msg, 'ERROR'
-```
-
-Two-way encryption: Encrypt a text with the private key of the sender and the public key of the recipient. The encrypted text can then be decrypted either by the private key of the sender and the public key of the recipient or with the private key of the recipient and the public key of the sender.
-
-```python
-from xian_py.wallet import Wallet
-from xian_py.crypto import (
-    encrypt_mutual_auth,
-    decrypt_mutual_auth_as_sender,
-    decrypt_mutual_auth_as_receiver
+# Encrypt message
+message = "Secret message"
+encrypted = encrypt(
+    sender_wallet.private_key,
+    receiver_wallet.public_key,
+    message
 )
 
-msg = "This is a Test"
-
-sender_wallet = Wallet()
-
-print('sender wallet')
-print(f'address: {sender_wallet.public_key}')
-print(f'privkey: {sender_wallet.private_key}')
-print('')
-
-receiver_wallet = Wallet()
-
-print('receiver wallet')
-print(f'address: {receiver_wallet.public_key}')
-print(f'privkey: {receiver_wallet.private_key}')
-
-msg_encrypted = encrypt_mutual_auth(
-    sender_wallet.private_key, 
-    receiver_wallet.public_key, 
-    msg
+# Decrypt as sender
+decrypted_sender = decrypt_as_sender(
+    sender_wallet.private_key,
+    receiver_wallet.public_key,
+    encrypted
 )
-print(f'msg encrypted: {msg_encrypted}')
 
-msg_decrypted_sender = decrypt_mutual_auth_as_sender(
-    sender_wallet.private_key, 
-    receiver_wallet.public_key, 
-    msg_encrypted
+# Decrypt as receiver
+decrypted_receiver = decrypt_as_receiver(
+    sender_wallet.public_key,
+    receiver_wallet.private_key,
+    encrypted
 )
-print(f'msg decrypted by sender: {msg_decrypted_sender}')
 
-msg_decrypted_receiver = decrypt_mutual_auth_as_receiver(
-    sender_wallet.public_key, 
-    receiver_wallet.private_key, 
-    msg_encrypted
-)
-print(f'msg decrypted by receiver: {msg_decrypted_receiver}')
-
-# Let's make sure that both decrypted texts match the original text
-assert msg == msg_decrypted_sender == msg_decrypted_receiver, 'ERROR'
+# Both parties get the original message
+assert message == decrypted_sender == decrypted_receiver
 ```
