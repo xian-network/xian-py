@@ -26,6 +26,7 @@ pip install xian-py
 - BIP39 mnemonic seed generation and recovery (24 words)
 - BIP32/SLIP-0010 compliant hierarchical deterministic wallets
 - Message signing and verification
+- Two-way message encryption and decryption between sender/receiver
 - Transaction creation, simulation, and broadcasting
 - Smart contract deployment and interaction
 - Token transfers and balance queries
