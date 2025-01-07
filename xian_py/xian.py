@@ -299,29 +299,3 @@ class Xian:
         """ Retrieve chain_id from the network """
         chain_id = self.get_genesis()['result']['genesis']['chain_id']
         return chain_id
-
-    def execute_read_only(self, contract: str, function: str, args: dict) -> str:
-        """ Execute a read-only function on a contract """
-
-        payload = {
-            "contract": contract,
-            "function": function,
-            "kwargs": args,
-            "sender": self.wallet.public_key,
-        }
-
-        encoded = json.dumps(payload).encode().hex()
-
-        try:
-            r = requests.post(f'{self.node_url}/abci_query?path="/execute_read_only/{encoded}"')
-            r.raise_for_status()
-            data = r.json()
-        except Exception as e:
-            raise XianException(e)
-
-        res = data['result']['response']
-
-        if res['code'] != 0:
-            raise XianException(res['log'])
-
-        return json.loads(decode_str(res['value']))
