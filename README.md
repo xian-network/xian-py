@@ -63,6 +63,7 @@ The SDK provides two types of wallets: basic `Wallet` and hierarchical determini
 
 ```python
 from xian_py.wallet import Wallet
+from xian_py.wallet import verify_msg
 
 # Create new wallet with random seed
 wallet = Wallet()
@@ -73,11 +74,6 @@ wallet = Wallet('ed30796abc4ab47a97bfb37359f50a9c362c7b304a4b4ad1b3f5369ecb6f7fd
 # Access wallet details
 print(f'Public Key: {wallet.public_key}')
 print(f'Private Key: {wallet.private_key}')
-
-# Sign and verify messages
-message = "Hello Xian"
-signature = wallet.sign_msg(message)
-is_valid = verify_msg(wallet.public_key, message, signature)
 ```
 
 ### HD Wallet Operations
@@ -85,7 +81,7 @@ is_valid = verify_msg(wallet.public_key, message, signature)
 The HD wallet implementation follows BIP39, BIP32, and SLIP-0010 standards for Ed25519 keys.
 
 ```python
-from xian_py.wallet import HDWallet
+from xian_py.wallet import HDWallet, Wallet
 
 # Create new HD wallet with 24-word mnemonic
 hd_wallet = HDWallet()
@@ -106,7 +102,11 @@ wallet0 = hd_wallet.get_wallet(path)
 #### Token Operations
 
 ```python
+from xian_py.wallet import Wallet
+from xian_py.xian import Xian
+
 # Initialize client
+wallet = Wallet()
 xian = Xian('http://node-ip:26657', wallet=wallet)
 
 # Check balance
@@ -124,6 +124,13 @@ token_balance = xian.get_balance('contract_address', contract='token_contract')
 #### Contract Deployment and Interaction
 
 ```python
+from xian_py.wallet import Wallet
+from xian_py.xian import Xian
+
+# Initialize client
+wallet = Wallet()
+xian = Xian('http://node-ip:26657', wallet=wallet)
+
 # Deploy contract
 code = '''
 @export
@@ -131,10 +138,6 @@ def greet(name: str):
     return f"Hello, {name}!"
 '''
 result = xian.submit_contract('greeting_contract', code)
-
-# Read-only contract execution
-args = {'name': 'World'}
-response = xian.execute_read_only('greeting_contract', 'greet', args)
 
 # Get contract state
 state = xian.get_state('contract_name', 'variable_name', 'key')
@@ -148,6 +151,12 @@ source = xian.get_contract('contract_name', clean=True)
 #### High-Level Transaction
 
 ```python
+from xian_py.wallet import Wallet
+from xian_py.xian import Xian
+
+wallet = Wallet()
+xian = Xian('http://node-ip:26657', wallet=wallet)
+
 result = xian.send_tx(
     contract='currency',
     function='transfer',
@@ -161,7 +170,15 @@ result = xian.send_tx(
 #### Low-Level Transaction with Simulation
 
 ```python
+from xian_py.wallet import Wallet
+from xian_py.xian import Xian
 from xian_py.transaction import get_nonce, create_tx, broadcast_tx_sync, simulate_tx
+
+# Initialize wallet
+wallet = Wallet()
+
+node_url = 'http://node-ip:26657'
+xian = Xian(node_url, wallet=wallet)
 
 # Prepare transaction payload
 payload = {
@@ -190,13 +207,22 @@ The SDK provides comprehensive cryptographic utilities for message signing, veri
 #### Message Verification and Key Validation
 
 ```python
-from xian_py.wallet import verify_msg, key_is_valid
+from xian_py.wallet import Wallet, verify_msg, key_is_valid
+
+# Create a wallet to demonstrate signing and verification
+wallet = Wallet()
+
+# Sign a message
+message = "Important message to verify"
+signature = wallet.sign_msg(message)
 
 # Verify message signature
-is_valid = verify_msg(public_key, message, signature)
+is_valid = verify_msg(wallet.public_key, message, signature)
+print(f'Signature valid: {is_valid}')  # Should print True
 
 # Validate key format
-is_valid_key = key_is_valid(key_string)  # Works for both public and private keys
+is_valid_key = key_is_valid(wallet.public_key)  # Works for both public and private keys
+print(f'Key valid: {is_valid_key}')  # Should print True
 ```
 
 #### Two-Way Message Encryption
@@ -235,4 +261,5 @@ decrypted_receiver = decrypt_as_receiver(
 
 # Both parties get the original message
 assert message == decrypted_sender == decrypted_receiver
+print("Message successfully encrypted and decrypted by both parties!")
 ```
