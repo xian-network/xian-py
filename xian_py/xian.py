@@ -1,5 +1,4 @@
 import ast
-import json
 import requests
 
 import xian_py.transaction as tr
