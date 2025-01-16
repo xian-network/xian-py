@@ -174,11 +174,6 @@ The SDK supports transaction simulation for two primary purposes:
 1. Estimating stamp costs before broadcasting a transaction
 2. Executing read-only contract functions without spending stamps
 
-In the payload for a simulated transaction you don't need to specify the following keys:
-- stamps_supplied
-- chain_id
-- nonce
-
 #### Low-Level Transaction with Transaction Cost Estimation
 
 ```python
@@ -217,6 +212,11 @@ result = broadcast_tx_sync(node_url, tx)
 #### Read-Only Contract Execution
 
 You can execute read-only contract functions without spending stamps by using transaction simulation. This is useful for querying contract state or calculating values without modifying the blockchain.
+
+In the payload for a simulated transaction you don't need to specify the following keys:
+- stamps_supplied
+- chain_id
+- nonce
 
 ```python
 from xian_py.wallet import Wallet
