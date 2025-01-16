@@ -12,6 +12,7 @@ Python SDK for interacting with the Xian blockchain network. This library provid
   - [Blockchain Interactions](#blockchain-interactions)
   - [Smart Contract Operations](#smart-contract-operations)
   - [Transaction Management](#transaction-management)
+  - [Simulated Transactions](#simulated-transactions)
   - [Cryptography Utilities](#cryptography-utilities)
 
 ## Installation
@@ -31,7 +32,7 @@ pip install xian-py
 - Smart contract deployment and interaction
 - Token transfers and balance queries
 - Asynchronous and synchronous transaction submission
-- Read-only contract execution
+- Read-only contract execution through transaction simulation
 
 ## Quick Start
 
@@ -167,16 +168,26 @@ result = xian.send_tx(
 )
 ```
 
-#### Low-Level Transaction with Simulation
+### Simulated Transactions
+
+The SDK supports transaction simulation for two primary purposes:
+1. Estimating stamp costs before broadcasting a transaction
+2. Executing read-only contract functions without spending stamps
+
+In the payload for a simulated transaction you don't need to specify the following keys:
+- stamps_supplied
+- chain_id
+- nonce
+
+#### Low-Level Transaction with Transaction Cost Estimation
 
 ```python
 from xian_py.wallet import Wallet
 from xian_py.xian import Xian
-from xian_py.transaction import get_nonce, create_tx, broadcast_tx_sync, simulate_tx
+from xian_py.transaction import get_nonce, create_tx, simulate_tx, broadcast_tx_sync
 
-# Initialize wallet
+# Initialize wallet and client
 wallet = Wallet()
-
 node_url = 'http://node-ip:26657'
 xian = Xian(node_url, wallet=wallet)
 
@@ -193,11 +204,41 @@ payload = {
 
 # Simulate to get stamp cost
 simulated = simulate_tx(node_url, payload)
+print(f"Required stamps: {simulated['stamps_used']}")
+
+# Use the simulated stamps in the actual transaction
 payload['stamps_supplied'] = simulated['stamps_used']
 
 # Create and broadcast transaction
 tx = create_tx(payload, wallet)
 result = broadcast_tx_sync(node_url, tx)
+```
+
+#### Read-Only Contract Execution
+
+You can execute read-only contract functions without spending stamps by using transaction simulation. This is useful for querying contract state or calculating values without modifying the blockchain.
+
+```python
+from xian_py.wallet import Wallet
+from xian_py.xian import Xian
+from xian_py.transaction import simulate_tx
+
+# Initialize client
+wallet = Wallet()
+node_url = 'http://node-ip:26657'
+xian = Xian(node_url, wallet=wallet)
+
+# Prepare read-only query payload
+payload = {
+    "contract": "token_contract",
+    "function": "get_balance",
+    "kwargs": {"address": wallet.public_key},
+    "sender": wallet.public_key,
+}
+
+# Execute simulation and get result
+result = simulate_tx(node_url, payload)
+print(f"Balance: {result['result']}")
 ```
 
 ### Cryptography Utilities
