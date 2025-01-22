@@ -41,22 +41,15 @@ class Xian:
 
         address = address if address else self.wallet.public_key
 
-        try:
-            r = requests.get(f'{self.node_url}/abci_query?path="/get/{contract}.balances:{address}"')
-        except Exception as e:
-            raise XianException(e)
+        payload = {
+            "contract": contract,
+            "function": "balance_of",
+            "kwargs": {"account": address},
+            "sender": self.wallet.public_key
+        }
 
-        json_data = r.json()
-        balance_byte_string = json_data['result']['response']['value']
-
-        # Balance is 0
-        if not balance_byte_string:
-            return 0
-        # Decodes to 'None' --> balance is 0
-        elif balance_byte_string == 'AA==':
-            return 0
-
-        balance = decode_str(balance_byte_string)
+        data = tr.simulate_tx(self.node_url, payload)
+        balance = data['result']
 
         if balance.isdigit():
             balance = int(balance)
