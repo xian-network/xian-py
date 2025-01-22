@@ -1,7 +1,6 @@
 from nacl.signing import SigningKey
 
 from nacl.public import (
-    SealedBox,
     PrivateKey,
     PublicKey,
     Box
