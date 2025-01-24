@@ -5,7 +5,6 @@ Python SDK for interacting with the Xian blockchain network. This library provid
 ## Table of Contents
 - [Installation](#installation)
 - [Features](#features)
-- [Quick Start](#quick-start)
 - [Usage Guide](#usage-guide)
   - [Wallet Management](#wallet-management)
   - [HD Wallet Operations](#hd-wallet-operations)
@@ -17,13 +16,20 @@ Python SDK for interacting with the Xian blockchain network. This library provid
 
 ## Installation
 
+Basic installation:
 ```bash
 pip install xian-py
+```
+
+With Ethereum support:
+```bash
+pip install "xian-py[eth]"
 ```
 
 ## Features
 
 - Basic and HD wallet creation and management using Ed25519 cryptography
+- Optional Ethereum address generation from the same HD wallet seed
 - BIP39 mnemonic seed generation and recovery (24 words)
 - BIP32/SLIP-0010 compliant hierarchical deterministic wallets
 - Message signing and verification
@@ -33,26 +39,6 @@ pip install xian-py
 - Token transfers and balance queries
 - Asynchronous and synchronous transaction submission
 - Read-only contract execution through transaction simulation
-
-## Quick Start
-
-```python
-from xian_py.wallet import Wallet
-from xian_py.xian import Xian
-
-# Create a new wallet
-wallet = Wallet()
-print(f"Address: {wallet.public_key}")
-
-# Initialize Xian client
-xian = Xian('http://your-node-ip:26657', wallet=wallet)
-
-# Send XIAN tokens
-result = xian.send(
-    amount=7,
-    to_address='b6504cf056e264a4c1932d5de6893d110db5459ab4f742eb415d98ed989bb988'
-)
-```
 
 ## Usage Guide
 
@@ -77,25 +63,33 @@ print(f'Public Key: {wallet.public_key}')
 print(f'Private Key: {wallet.private_key}')
 ```
 
-### HD Wallet Operations
+#### HD Wallet Operations
 
-The HD wallet implementation follows BIP39, BIP32, and SLIP-0010 standards for Ed25519 keys.
+The HD wallet implementation follows BIP39, BIP32, and SLIP-0010 standards. It can generate both Ed25519 keys for Xian and Secp256k1 keys for Ethereum from the same seed.
 
 ```python
-from xian_py.wallet import HDWallet, Wallet
+from xian_py.wallet import HDWallet
 
 # Create new HD wallet with 24-word mnemonic
 hd_wallet = HDWallet()
-print(f'Mnemonic: {hd_wallet.mnemonic_str}')  # Space-separated words
-print(f'Words: {hd_wallet.mnemonic_lst}')     # List of words
+print(f'Mnemonic: {hd_wallet.mnemonic_str}')
 
 # Create from existing mnemonic
 mnemonic = 'dynamic kitchen omit dinosaur found trend video morning oppose staff bid honey...'
 hd_wallet = HDWallet(mnemonic)
 
-# Derive child wallets (keys are automatically hardened)
+# Derive Xian wallet
 path = [44, 0, 0, 0, 0]  # m/44'/0'/0'/0'/0'
-wallet0 = hd_wallet.get_wallet(path)
+xian_wallet = hd_wallet.get_wallet(path)
+print(f'Xian Address: {xian_wallet.public_key}')
+
+# Derive Ethereum wallet (requires ethereum extras)
+eth_wallet = hd_wallet.get_ethereum_wallet(0)  # Uses standard Ethereum derivation path
+print(f'Ethereum Address: {eth_wallet.public_key}')
+
+# Get multiple Ethereum accounts
+eth_wallet2 = hd_wallet.get_ethereum_wallet(1)  # Second account
+print(f'Second Ethereum Address: {eth_wallet2.public_key}')
 ```
 
 ### Blockchain Interactions
@@ -245,25 +239,30 @@ print(f"Balance: {result['result']}")
 
 The SDK provides comprehensive cryptographic utilities for message signing, verification, and secure communication between parties.
 
-#### Message Verification and Key Validation
+#### Message Signing and Verification
+
+The SDK supports message signing and verification for both Xian and Ethereum wallets.
 
 ```python
-from xian_py.wallet import Wallet, verify_msg, key_is_valid
+from xian_py.wallet import Wallet, HDWallet, EthereumWallet
 
-# Create a wallet to demonstrate signing and verification
-wallet = Wallet()
+# Create wallets 
+xian_wallet = Wallet()
+hd_wallet = HDWallet()
+eth_wallet = hd_wallet.get_ethereum_wallet(0)
 
-# Sign a message
+# Sign and verify with Xian wallet
 message = "Important message to verify"
-signature = wallet.sign_msg(message)
+xian_signature = xian_wallet.sign_msg(message)
+print(f'Xian signature valid: {xian_wallet.verify_msg(message, xian_signature)}')
 
-# Verify message signature
-is_valid = verify_msg(wallet.public_key, message, signature)
-print(f'Signature valid: {is_valid}')  # Should print True
+# Sign and verify with Ethereum wallet
+eth_signature = eth_wallet.sign_msg(message)
+print(f'Ethereum signature valid: {eth_wallet.verify_msg(message, eth_signature)}')
 
-# Validate key format
-is_valid_key = key_is_valid(wallet.public_key)  # Works for both public and private keys
-print(f'Key valid: {is_valid_key}')  # Should print True
+# Validate key formats
+print(f'Xian key valid: {Wallet.is_valid_key(xian_wallet.public_key)}')
+print(f'Ethereum address valid: {EthereumWallet.is_valid_key(eth_wallet.public_key)}')
 ```
 
 #### Two-Way Message Encryption
