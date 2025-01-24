@@ -35,7 +35,7 @@ pip install "xian-py[eth]"
 - Message signing and verification
 - Two-way message encryption and decryption between sender/receiver
 - Transaction creation, simulation, and broadcasting
-- Smart contract deployment and interaction
+- Smart contract deployment, interaction, and validation
 - Token transfers and balance queries
 - Asynchronous and synchronous transaction submission
 - Read-only contract execution through transaction simulation
@@ -50,7 +50,6 @@ The SDK provides two types of wallets: basic `Wallet` and hierarchical determini
 
 ```python
 from xian_py.wallet import Wallet
-from xian_py.wallet import verify_msg
 
 # Create new wallet with random seed
 wallet = Wallet()
@@ -139,6 +138,42 @@ state = xian.get_state('contract_name', 'variable_name', 'key')
 
 # Get and decompile contract source
 source = xian.get_contract('contract_name', clean=True)
+```
+
+#### Contract Validation
+
+The SDK supports validating smart contracts against different [contract standards](https://github.com/xian-network/xian-standard-contracts):
+
+```python
+from xian_py.validator import validate_contract, XianStandard
+
+# Validate contract against XSC001 standard
+code = '''
+@construct
+def seed():
+    balances = Hash()
+    metadata = Hash()
+    metadata['token_name'] = 'MyToken'
+    metadata['token_symbol'] = 'MTK'
+    metadata['token_logo_url'] = 'https://example.com/logo.png'
+    metadata['token_website'] = 'https://example.com'
+    metadata['operator'] = ctx.caller
+
+@export
+def transfer(amount: int, to: str):
+    # Transfer implementation
+    pass
+# ... rest of the contract code
+'''
+
+# Validate against XSC001 (default)
+is_valid, errors = validate_contract(code)
+
+# Validate against a specific standard
+is_valid, errors = validate_contract(code, standard=XianStandard.XSC001)
+
+if not is_valid:
+    print("Validation errors:", errors)
 ```
 
 ### Transaction Management
