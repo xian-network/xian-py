@@ -44,7 +44,7 @@ class Xian:
         payload = {
             "contract": contract,
             "function": "balance_of",
-            "kwargs": {"account": address},
+            "kwargs": {"address": address},
             "sender": self.wallet.public_key
         }
 
