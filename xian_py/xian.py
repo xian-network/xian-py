@@ -62,10 +62,12 @@ class Xian:
             return int(num) if num.is_integer() else num
 
         try:
-            balance = query_simulate() or query_abci()
-            return normalize_balance(balance)
-        except Exception as e:
-            raise XianException(e)
+            return normalize_balance(query_simulate())
+        except:
+            try:
+                return normalize_balance(query_abci())
+            except Exception as e:
+                raise XianException(e)
 
     def send_tx(
             self,
