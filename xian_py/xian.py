@@ -33,33 +33,39 @@ class Xian:
 
         return data
 
-    def get_balance(
-            self,
-            address: str = None,
-            contract: str = 'currency') -> int | float:
-        """ Return balance for given address and token contract """
+    def get_balance(self, address: str = None, contract: str = 'currency') -> int | float:
+        address = address or self.wallet.public_key
 
-        address = address if address else self.wallet.public_key
+        def query_simulate():
+            payload = {
+                "contract": contract,
+                "function": "balance_of",
+                "kwargs": {"address": address},
+                "sender": self.wallet.public_key
+            }
+            data = tr.simulate_tx(self.node_url, payload)
+            return data['result']
 
-        payload = {
-            "contract": contract,
-            "function": "balance_of",
-            "kwargs": {"address": address},
-            "sender": self.wallet.public_key
-        }
+        def query_abci():
+            r = requests.get(f'{self.node_url}/abci_query?path="/get/{contract}.balances:{address}"')
+            balance_bytes = r.json()['result']['response']['value']
 
-        data = tr.simulate_tx(self.node_url, payload)
-        balance = data['result']
+            if not balance_bytes or balance_bytes == 'AA==':
+                return '0'
 
-        if balance.isdigit():
-            balance = int(balance)
-        else:
-            if float(balance).is_integer():
-                balance = int(float(balance))
-            else:
-                balance = float(balance)
+            return decode_str(balance_bytes)
 
-        return balance
+        def normalize_balance(balance: str) -> int | float:
+            if balance.isdigit():
+                return int(balance)
+            num = float(balance)
+            return int(num) if num.is_integer() else num
+
+        try:
+            balance = query_simulate() or query_abci()
+            return normalize_balance(balance)
+        except Exception as e:
+            raise XianException(e)
 
     def send_tx(
             self,
