@@ -152,6 +152,15 @@ class Xian:
             stamps=stamps
         )
 
+    def simulate(self, contract: str, function: str, kwargs: dict) -> dict:
+        payload = {
+            "contract": contract,
+            "function": function,
+            "kwargs": kwargs,
+            "sender": self.wallet.public_key
+        }
+        return tr.simulate_tx(self.node_url, payload)
+
     def get_state(
             self,
             contract: str,
