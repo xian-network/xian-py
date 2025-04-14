@@ -236,7 +236,12 @@ class Xian:
 
         address = address if address else self.wallet.public_key
 
-        value = self.get_state(token, 'balances', address, contract)
+        value = self.get_state(token, 'approvals', address, contract)
+
+        if value is None:
+            # For backward compatibility when approvals are stord in balances
+            value = self.get_state(token, 'balances', address, contract)
+
         value = 0 if value is None else value
 
         return value
