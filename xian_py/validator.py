@@ -18,7 +18,6 @@ class ValidatorXSC001(ValidatorBase):
     def __init__(self):
         self.required_variables = {'balances', 'metadata'}
         self.required_functions = {
-            'seed': set(),
             'change_metadata': {'key', 'value'},
             'transfer': {'amount', 'to'},
             'approve': {'amount', 'to'},
