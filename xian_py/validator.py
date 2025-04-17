@@ -23,7 +23,7 @@ class ValidatorXSC001(ValidatorBase):
             'transfer': {'amount', 'to'},
             'approve': {'amount', 'to'},
             'transfer_from': {'amount', 'to', 'main_account'},
-            'balance_of': {'account'}
+            'balance_of': {'address'}
         }
         self.found_variables: Set[str] = set()
         self.found_functions: Dict[str, Set[str]] = {}
