@@ -1,83 +1,100 @@
-import requests
+"""
+Transaction and network helper functions for interacting with a Xian node.
+
+These helpers have been refactored to use `aiohttp` for all HTTP I/O.
+Each function has a true asynchronous implementation (prefixed with `_`)
+and a synchronous wrapper that executes the coroutine using `run_sync`.
+Consumers that wish to leverage asyncio for concurrency should prefer the
+async functions; legacy synchronous callers can continue to use the
+original names, which now delegate to their async counterparts via run_sync.
+"""
+
 import json
+from typing import Any, Dict
+
+import aiohttp
 
 from xian_py.wallet import Wallet
 from xian_py.encoding import encode, decode_dict, decode_str
 from xian_py.formating import format_dictionary, check_format_of_payload
 from xian_py.exception import XianException
+from xian_py.run_sync import run_sync
 
 
-def get_nonce(node_url: str, address: str) -> int:
-    """
-    Return next nonce for given address
-    :param node_url: Node URL in format 'http://<IP>:<Port>'
-    :param address: Wallet address for which the nonce will be returned
-    :return: Next unused nonce
-    """
+async def _get_nonce(node_url: str, address: str) -> int:
+    """Asynchronously retrieve the next nonce for the given address."""
+    url = f"{node_url}/abci_query?path=\"/get_next_nonce/{address}\""
     try:
-        r = requests.post(f'{node_url}/abci_query?path="/get_next_nonce/{address}"')
-        r.raise_for_status()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url) as resp:
+                resp_data = await resp.json()
     except Exception as e:
         raise XianException(e)
 
-    data = r.json()['result']['response']['value']
-
-    # Data is None
+    data = resp_data['result']['response']['value']
     if data == 'AA==':
         return 0
-
     nonce = decode_str(data)
     return int(nonce)
 
 
-def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> dict:
-    """
-    Return transaction either with encoded or decoded content
-    :param node_url: Node URL in format 'http://<IP>:<Port>'
-    :param tx_hash: Hash of transaction that gets retrieved
-    :param decode: If TRUE, returned JSON data will be decoded
-    :return: Transaction data in JSON
-    """
+def get_nonce(node_url: str, address: str) -> int:
+    """Synchronous wrapper for _get_nonce."""
+    return run_sync(_get_nonce(node_url, address))
+
+
+async def _get_tx(node_url: str, tx_hash: str, decode: bool = True) -> Dict[str, Any]:
+    """Asynchronously return transaction details, optionally decoding content."""
+    url = f"{node_url}/tx?hash=0x{tx_hash}"
     try:
-        r = requests.get(f'{node_url}/tx?hash=0x{tx_hash}')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                data = await resp.json()
     except Exception as e:
         raise XianException(e)
 
-    data = r.json()
-
     if decode and 'result' in data:
-        decoded = decode_dict(data['result']['tx'])
-        data['result']['tx'] = decoded
+        decoded_tx = decode_dict(data['result']['tx'])
+        data['result']['tx'] = decoded_tx
 
-        if data['result']['tx_result']['data'] is not None:
-            decoded = decode_str(data['result']['tx_result']['data'])
+        tx_data = data['result']['tx_result'].get('data')
+        if tx_data is not None:
+            decoded = decode_str(tx_data)
             data['result']['tx_result']['data'] = json.loads(decoded)
-
     return data
 
 
-def simulate_tx(node_url: str, payload: dict) -> dict:
-    """ Estimate the amount of stamps a tx will cost """
-    encoded = json.dumps(payload).encode().hex()
+def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> Dict[str, Any]:
+    """Synchronous wrapper for _get_tx."""
+    return run_sync(_get_tx(node_url, tx_hash, decode))
 
+
+async def _simulate_tx(node_url: str, payload: dict) -> Dict[str, Any]:
+    """Asynchronously estimate the amount of stamps a tx will cost."""
+    encoded = json.dumps(payload).encode().hex()
+    url = f"{node_url}/abci_query?path=\"/simulate_tx/{encoded}\""
     try:
-        r = requests.post(f'{node_url}/abci_query?path="/simulate_tx/{encoded}"')
-        r.raise_for_status()
-        data = r.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url) as resp:
+                data = await resp.json()
     except Exception as e:
         raise XianException(e)
 
     res = data['result']['response']
-
     if res['code'] != 0:
         raise XianException(res['log'])
-
     return json.loads(decode_str(res['value']))
+
+
+def simulate_tx(node_url: str, payload: dict) -> Dict[str, Any]:
+    """Synchronous wrapper for _simulate_tx."""
+    return run_sync(_simulate_tx(node_url, payload))
 
 
 def create_tx(payload: dict, wallet: Wallet) -> dict:
     """
-    Create offline transaction that can be broadcast
+    Create offline transaction that can be broadcast.
+
     :param payload: Transaction payload with following keys:
         chain_id: Network ID
         contract: Contract name to be executed
@@ -98,60 +115,58 @@ def create_tx(payload: dict, wallet: Wallet) -> dict:
             "signature": wallet.sign_msg(json.dumps(payload))
         }
     }
-
     tx = encode(format_dictionary(tx))
     return json.loads(tx)
 
 
-def broadcast_tx_commit(node_url: str, tx: dict) -> dict:
-    """
-    DO NOT USE IN PRODUCTION - ONLY FOR TESTS IN DEVELOPMENT!
-    Submits a transaction to be included in the blockchain and
-    returns the response from CheckTx and DeliverTx.
-    :param node_url: Node URL in format 'http://<IP>:<Port>'
-    :param tx: Transaction data in JSON format (dict)
-    :return: JSON data with tx hash, CheckTx and DeliverTx results
-    """
-    payload = json.dumps(tx).encode().hex()
-
+async def _broadcast_tx_commit(node_url: str, tx: dict) -> Dict[str, Any]:
+    """Asynchronously submit a transaction and wait for CheckTx and DeliverTx."""
+    payload_hex = json.dumps(tx).encode().hex()
+    url = f"{node_url}/broadcast_tx_commit?tx=\"{payload_hex}\""
     try:
-        r = requests.post(f'{node_url}/broadcast_tx_commit?tx="{payload}"')
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url) as resp:
+                data = await resp.json()
     except Exception as e:
         raise XianException(e)
-
-    data = r.json()
     return data
 
 
-def broadcast_tx_sync(node_url: str, tx: dict) -> dict:
-    """
-    Submits a transaction to be included in the blockchain and returns
-    the response from CheckTx. Does not wait for DeliverTx result.
-    :param node_url: Node URL in format 'http://<IP>:<Port>'
-    :param tx: Transaction data in JSON format (dict)
-    :return: JSON data with tx hash and CheckTx result
-    """
-    payload = json.dumps(tx).encode().hex()
+def broadcast_tx_commit(node_url: str, tx: dict) -> Dict[str, Any]:
+    """Synchronous wrapper for _broadcast_tx_commit."""
+    return run_sync(_broadcast_tx_commit(node_url, tx))
 
+
+async def _broadcast_tx_sync(node_url: str, tx: dict) -> Dict[str, Any]:
+    """Asynchronously submit a transaction and wait for CheckTx."""
+    payload_hex = json.dumps(tx).encode().hex()
+    url = f"{node_url}/broadcast_tx_sync?tx=\"{payload_hex}\""
     try:
-        r = requests.post(f'{node_url}/broadcast_tx_sync?tx="{payload}"')
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url) as resp:
+                data = await resp.json()
     except Exception as e:
         raise XianException(e)
-
-    data = r.json()
     return data
 
 
-def broadcast_tx_async(node_url: str, tx: dict):
-    """
-    Submits a transaction to be included in the blockchain and returns
-    immediately. Does not wait for CheckTx or DeliverTx results.
-    :param node_url: Node URL in format 'http://<IP>:<Port>'
-    :param tx: Transaction data in JSON format (dict)
-    """
-    payload = json.dumps(tx).encode().hex()
+def broadcast_tx_sync(node_url: str, tx: dict) -> Dict[str, Any]:
+    """Synchronous wrapper for _broadcast_tx_sync."""
+    return run_sync(_broadcast_tx_sync(node_url, tx))
 
+
+async def _broadcast_tx_async(node_url: str, tx: dict) -> None:
+    """Asynchronously submit a transaction without waiting for any result."""
+    payload_hex = json.dumps(tx).encode().hex()
+    url = f"{node_url}/broadcast_tx_async?tx=\"{payload_hex}\""
     try:
-        requests.post(f'{node_url}/broadcast_tx_async?tx="{payload}"')
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url):
+                pass
     except Exception as e:
         raise XianException(e)
+
+
+def broadcast_tx_async(node_url: str, tx: dict) -> None:
+    """Synchronous wrapper for _broadcast_tx_async."""
+    return run_sync(_broadcast_tx_async(node_url, tx))
