@@ -1,5 +1,6 @@
 import ast
-import requests
+import aiohttp
+from xian_py.run_sync import run_sync
 
 import xian_py.transaction as tr
 from xian_py.decompiler import ContractDecompiler
@@ -46,14 +47,18 @@ class Xian:
             data = tr.simulate_tx(self.node_url, payload)
             return data['result']
 
-        def query_abci():
-            r = requests.get(f'{self.node_url}/abci_query?path="/get/{contract}.balances:{address}"')
-            balance_bytes = r.json()['result']['response']['value']
-
+        async def _query_abci() -> str:
+            url = f"{self.node_url}/abci_query?path=\"/get/{contract}.balances:{address}\""
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    data = await resp.json()
+            balance_bytes = data['result']['response']['value']
             if not balance_bytes or balance_bytes == 'AA==':
                 return '0'
-
             return decode_str(balance_bytes)
+
+        def query_abci() -> str:
+            return run_sync(_query_abci())
 
         def normalize_balance(balance: str) -> int | float:
             if balance.isdigit():
@@ -173,12 +178,18 @@ class Xian:
         if len(keys) > 0:
             path = f'{path}:{":".join(keys)}' if keys else path
 
-        try:
-            r = requests.get(f'{self.node_url}/abci_query?path="{path}"')
-        except Exception as e:
-            raise XianException(e)
+        async def _query() -> str | None:
+            url = f"{self.node_url}/abci_query?path=\"{path}\""
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as resp:
+                        data = await resp.json()
+            except Exception as e:
+                raise XianException(e)
+            return data['result']['response']['value']
 
-        byte_string = r.json()['result']['response']['value']
+        # Execute the async query synchronously
+        byte_string = run_sync(_query())
 
         # Decodes to 'None'
         if byte_string is None or byte_string == 'AA==':
@@ -209,12 +220,17 @@ class Xian:
             clean: bool = False) -> None | str:
         """ Retrieve contract and decode it """
 
-        try:
-            r = requests.get(f'{self.node_url}/abci_query?path="contract/{contract}"')
-        except Exception as e:
-            raise XianException(e)
+        async def _query() -> str | None:
+            url = f"{self.node_url}/abci_query?path=\"contract/{contract}\""
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as resp:
+                        data = await resp.json()
+            except Exception as e:
+                raise XianException(e)
+            return data['result']['response']['value']
 
-        byte_string = r.json()['result']['response']['value']
+        byte_string = run_sync(_query())
 
         # Decodes to 'None'
         if byte_string is None or byte_string == 'AA==':
@@ -283,33 +299,37 @@ class Xian:
 
     def get_nodes(self) -> list:
         """ Retrieve list of nodes from the network """
+        async def _get_nodes() -> list[str]:
+            url = f"{self.node_url}/net_info"
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url) as resp:
+                        data = await resp.json()
+            except Exception as e:
+                raise XianException(e)
+            peers = data['result']['peers']
+            ips: list[str] = []
+            for peer in peers:
+                ips.append(peer['remote_ip'])
+            return ips
 
-        try:
-            r = requests.post(f'{self.node_url}/net_info')
-        except Exception as e:
-            raise XianException(e)
-
-        peers = r.json()['result']['peers']
-
-        ips = list()
-
-        for peer in peers:
-            ips.append(peer['remote_ip'])
-
-        return ips
+        return run_sync(_get_nodes())
 
     def get_genesis(self):
         """ Retrieve genesis info from the network """
+        async def _get_genesis() -> dict:
+            url = f"{self.node_url}/genesis"
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url) as resp:
+                        data = await resp.json()
+            except Exception as e:
+                raise XianException(e)
+            return data
 
-        try:
-            r = requests.post(f'{self.node_url}/genesis')
-        except Exception as e:
-            raise XianException(e)
-
-        data = r.json()
-        return data
+        return run_sync(_get_genesis())
 
     def get_chain_id(self):
         """ Retrieve chain_id from the network """
-        chain_id = self.get_genesis()['result']['genesis']['chain_id']
-        return chain_id
+        genesis = self.get_genesis()
+        return genesis['result']['genesis']['chain_id']
