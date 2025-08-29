@@ -128,6 +128,28 @@ def create_tx(payload: dict, wallet: Wallet) -> dict:
     return json.loads(tx)
 
 
+# Async version for API consistency (no actual async operations needed)
+async def create_tx_async(payload: dict, wallet: Wallet) -> dict:
+    """
+    Create offline transaction that can be broadcast (async version)
+    
+    Note: This function doesn't perform any I/O operations, so the async
+    version simply calls the sync version. It exists for API consistency.
+    
+    :param payload: Transaction payload with following keys:
+        chain_id: Network ID
+        contract: Contract name to be executed
+        function: Function name to be executed
+        kwargs: Arguments for function
+        nonce: Unique continuous number
+        sender: Wallet address of sender
+        stamps: Max amount of stamps to use
+    :param wallet: Wallet object with public and private key
+    :return: Encoded transaction data
+    """
+    return create_tx(payload, wallet)
+
+
 async def broadcast_tx_commit_async(node_url: str, tx: dict) -> dict:
     """
     DO NOT USE IN PRODUCTION - ONLY FOR TESTS IN DEVELOPMENT!
