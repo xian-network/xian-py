@@ -14,11 +14,52 @@ from typing import Optional
 class XianAsync:
     """Async version of the Xian class for non-blocking operations"""
     
-    def __init__(self, node_url: str, chain_id: str = None, wallet: Wallet = None):
-        self.node_url = node_url
+    def __init__(
+        self,
+        node_url: str,
+        chain_id: str = None,
+        wallet: Wallet = None,
+        *,
+        session: Optional[aiohttp.ClientSession] = None,
+        timeout: Optional[aiohttp.ClientTimeout] = None,
+        connector: Optional[aiohttp.TCPConnector] = None,
+    ):
+        self.node_url = node_url.rstrip("/")
         self.chain_id = chain_id  # Will be set asynchronously if needed
         self.wallet = wallet if wallet else Wallet()
         self._chain_id_set = chain_id is not None
+        self._external_session = session
+        self._timeout = timeout or aiohttp.ClientTimeout(
+            total=15, sock_connect=3, sock_read=10
+        )
+        self._connector = connector or aiohttp.TCPConnector(
+            limit=100, ttl_dns_cache=300
+        )
+        self._session: Optional[aiohttp.ClientSession] = session
+
+    async def __aenter__(self) -> "XianAsync":
+        if self._session is None:
+            self._session = aiohttp.ClientSession(
+                timeout=self._timeout, connector=self._connector
+            )
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        await self.close()
+
+    @property
+    def session(self) -> aiohttp.ClientSession:
+        if self._session is None:
+            # lazy create for users who don't use context manager
+            self._session = aiohttp.ClientSession(
+                timeout=self._timeout, connector=self._connector
+            )
+        return self._session
+
+    async def close(self) -> None:
+        if self._session and not self._external_session:
+            await self._session.close()
+        self._session = None
 
     async def ensure_chain_id(self):
         """Ensure chain_id is set, fetching it if necessary"""
@@ -56,15 +97,14 @@ class XianAsync:
             return data['result']
 
         async def query_abci():
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f'{self.node_url}/abci_query?path="/get/{contract}.balances:{address}"') as r:
-                    response = await r.json()
-                    balance_bytes = response['result']['response']['value']
+            async with self.session.get(f'{self.node_url}/abci_query?path="/get/{contract}.balances:{address}"') as r:
+                response = await r.json()
+                balance_bytes = response['result']['response']['value']
 
-                    if not balance_bytes or balance_bytes == 'AA==':
-                        return '0'
+                if not balance_bytes or balance_bytes == 'AA==':
+                    return '0'
 
-                    return decode_str(balance_bytes)
+                return decode_str(balance_bytes)
 
         def normalize_balance(balance: str) -> int | float:
             if balance.isdigit():
@@ -185,9 +225,8 @@ class XianAsync:
             path = f'{path}:{":".join(keys)}' if keys else path
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f'{self.node_url}/abci_query?path="{path}"') as r:
-                    response = await r.json()
+            async with self.session.get(f'{self.node_url}/abci_query?path="{path}"') as r:
+                response = await r.json()
         except Exception as e:
             raise XianException(e)
 
@@ -223,9 +262,8 @@ class XianAsync:
         """ Retrieve contract and decode it """
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f'{self.node_url}/abci_query?path="contract/{contract}"') as r:
-                    response = await r.json()
+            async with self.session.get(f'{self.node_url}/abci_query?path="contract/{contract}"') as r:
+                response = await r.json()
         except Exception as e:
             raise XianException(e)
 
@@ -300,9 +338,8 @@ class XianAsync:
         """ Retrieve list of nodes from the network """
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(f'{self.node_url}/net_info') as r:
-                    response = await r.json()
+            async with self.session.post(f'{self.node_url}/net_info') as r:
+                response = await r.json()
         except Exception as e:
             raise XianException(e)
 
@@ -319,9 +356,8 @@ class XianAsync:
         """ Retrieve genesis info from the network """
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(f'{self.node_url}/genesis') as r:
-                    data = await r.json()
+            async with self.session.post(f'{self.node_url}/genesis') as r:
+                data = await r.json()
         except Exception as e:
             raise XianException(e)
 

@@ -10,7 +10,11 @@ T = TypeVar('T')
 
 def sync_wrapper(async_func: Callable[..., Coroutine[Any, Any, T]]) -> Callable[..., T]:
     """
-    Decorator that creates a synchronous wrapper for an async function.
+    Wrap an async method with a synchronous facade.
+
+    - Raises if called while an event loop is running (use the async API).
+    - Advanced users can import `run_sync()` from `xian_py.run_sync` and
+      opt-in to thread-backed execution if they know what they're doing.
     
     This allows async functions to be called from synchronous code by
     automatically managing the event loop.
