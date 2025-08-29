@@ -32,15 +32,16 @@ class XianAsync:
         self._timeout = timeout or aiohttp.ClientTimeout(
             total=15, sock_connect=3, sock_read=10
         )
-        self._connector = connector or aiohttp.TCPConnector(
-            limit=100, ttl_dns_cache=300
-        )
+        self._connector_params = connector
         self._session: Optional[aiohttp.ClientSession] = session
 
     async def __aenter__(self) -> "XianAsync":
         if self._session is None:
+            connector = self._connector_params or aiohttp.TCPConnector(
+                limit=100, ttl_dns_cache=300
+            )
             self._session = aiohttp.ClientSession(
-                timeout=self._timeout, connector=self._connector
+                timeout=self._timeout, connector=connector
             )
         return self
 
@@ -51,8 +52,11 @@ class XianAsync:
     def session(self) -> aiohttp.ClientSession:
         if self._session is None:
             # lazy create for users who don't use context manager
+            connector = self._connector_params or aiohttp.TCPConnector(
+                limit=100, ttl_dns_cache=300
+            )
             self._session = aiohttp.ClientSession(
-                timeout=self._timeout, connector=self._connector
+                timeout=self._timeout, connector=connector
             )
         return self._session
 
