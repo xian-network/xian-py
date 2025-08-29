@@ -1,3 +1,12 @@
+"""
+Transaction module for interacting with the Xian blockchain.
+
+This module provides both async and sync versions of all functions:
+- Async functions have the `_async` suffix (e.g., get_nonce_async)
+- Sync functions have no suffix (e.g., get_nonce)
+
+Both versions are exported to allow users to choose based on their needs.
+"""
 import aiohttp
 import json
 
@@ -168,10 +177,14 @@ async def broadcast_tx_sync_async(node_url: str, tx: dict) -> dict:
 broadcast_tx_sync = sync_wrapper(broadcast_tx_sync_async)
 
 
-async def broadcast_tx_async_async(node_url: str, tx: dict):
+async def broadcast_tx_nowait_async(node_url: str, tx: dict):
     """
     Submits a transaction to be included in the blockchain and returns
     immediately. Does not wait for CheckTx or DeliverTx results.
+    
+    This is the fastest broadcast method but provides no confirmation
+    that the transaction was accepted or processed.
+    
     :param node_url: Node URL in format 'http://<IP>:<Port>'
     :param tx: Transaction data in JSON format (dict)
     """
@@ -187,4 +200,8 @@ async def broadcast_tx_async_async(node_url: str, tx: dict):
 
 
 # Sync wrapper for backward compatibility
-broadcast_tx_async = sync_wrapper(broadcast_tx_async_async)
+broadcast_tx_nowait = sync_wrapper(broadcast_tx_nowait_async)
+
+# Deprecated aliases for backward compatibility
+broadcast_tx_async_async = broadcast_tx_nowait_async
+broadcast_tx_async = broadcast_tx_nowait
