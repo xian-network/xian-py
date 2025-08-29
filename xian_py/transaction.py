@@ -1,13 +1,23 @@
-import requests
+"""
+Transaction module for interacting with the Xian blockchain.
+
+This module provides both async and sync versions of all functions:
+- Async functions have the `_async` suffix (e.g., get_nonce_async)
+- Sync functions have no suffix (e.g., get_nonce)
+
+Both versions are exported to allow users to choose based on their needs.
+"""
+import aiohttp
 import json
 
 from xian_py.wallet import Wallet
 from xian_py.encoding import encode, decode_dict, decode_str
 from xian_py.formating import format_dictionary, check_format_of_payload
 from xian_py.exception import XianException
+from xian_py.async_utils import sync_wrapper
 
 
-def get_nonce(node_url: str, address: str) -> int:
+async def get_nonce_async(node_url: str, address: str) -> int:
     """
     Return next nonce for given address
     :param node_url: Node URL in format 'http://<IP>:<Port>'
@@ -15,22 +25,28 @@ def get_nonce(node_url: str, address: str) -> int:
     :return: Next unused nonce
     """
     try:
-        r = requests.post(f'{node_url}/abci_query?path="/get_next_nonce/{address}"')
-        r.raise_for_status()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f'{node_url}/abci_query?path="/get_next_nonce/{address}"') as r:
+                r.raise_for_status()
+                data = await r.json()
     except Exception as e:
         raise XianException(e)
 
-    data = r.json()['result']['response']['value']
+    value = data['result']['response']['value']
 
     # Data is None
-    if data == 'AA==':
+    if value == 'AA==':
         return 0
 
-    nonce = decode_str(data)
+    nonce = decode_str(value)
     return int(nonce)
 
 
-def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> dict:
+# Sync wrapper for backward compatibility
+get_nonce = sync_wrapper(get_nonce_async)
+
+
+async def get_tx_async(node_url: str, tx_hash: str, decode: bool = True) -> dict:
     """
     Return transaction either with encoded or decoded content
     :param node_url: Node URL in format 'http://<IP>:<Port>'
@@ -39,11 +55,11 @@ def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> dict:
     :return: Transaction data in JSON
     """
     try:
-        r = requests.get(f'{node_url}/tx?hash=0x{tx_hash}')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f'{node_url}/tx?hash=0x{tx_hash}') as r:
+                data = await r.json()
     except Exception as e:
         raise XianException(e)
-
-    data = r.json()
 
     if decode and 'result' in data:
         decoded = decode_dict(data['result']['tx'])
@@ -56,14 +72,19 @@ def get_tx(node_url: str, tx_hash: str, decode: bool = True) -> dict:
     return data
 
 
-def simulate_tx(node_url: str, payload: dict) -> dict:
+# Sync wrapper for backward compatibility
+get_tx = sync_wrapper(get_tx_async)
+
+
+async def simulate_tx_async(node_url: str, payload: dict) -> dict:
     """ Estimate the amount of stamps a tx will cost """
     encoded = json.dumps(payload).encode().hex()
 
     try:
-        r = requests.post(f'{node_url}/abci_query?path="/simulate_tx/{encoded}"')
-        r.raise_for_status()
-        data = r.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f'{node_url}/abci_query?path="/simulate_tx/{encoded}"') as r:
+                r.raise_for_status()
+                data = await r.json()
     except Exception as e:
         raise XianException(e)
 
@@ -73,6 +94,10 @@ def simulate_tx(node_url: str, payload: dict) -> dict:
         raise XianException(res['log'])
 
     return json.loads(decode_str(res['value']))
+
+
+# Sync wrapper for backward compatibility
+simulate_tx = sync_wrapper(simulate_tx_async)
 
 
 def create_tx(payload: dict, wallet: Wallet) -> dict:
@@ -103,7 +128,7 @@ def create_tx(payload: dict, wallet: Wallet) -> dict:
     return json.loads(tx)
 
 
-def broadcast_tx_commit(node_url: str, tx: dict) -> dict:
+async def broadcast_tx_commit_async(node_url: str, tx: dict) -> dict:
     """
     DO NOT USE IN PRODUCTION - ONLY FOR TESTS IN DEVELOPMENT!
     Submits a transaction to be included in the blockchain and
@@ -115,15 +140,20 @@ def broadcast_tx_commit(node_url: str, tx: dict) -> dict:
     payload = json.dumps(tx).encode().hex()
 
     try:
-        r = requests.post(f'{node_url}/broadcast_tx_commit?tx="{payload}"')
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f'{node_url}/broadcast_tx_commit?tx="{payload}"') as r:
+                data = await r.json()
     except Exception as e:
         raise XianException(e)
 
-    data = r.json()
     return data
 
 
-def broadcast_tx_sync(node_url: str, tx: dict) -> dict:
+# Sync wrapper for backward compatibility
+broadcast_tx_commit = sync_wrapper(broadcast_tx_commit_async)
+
+
+async def broadcast_tx_sync_async(node_url: str, tx: dict) -> dict:
     """
     Submits a transaction to be included in the blockchain and returns
     the response from CheckTx. Does not wait for DeliverTx result.
@@ -134,24 +164,44 @@ def broadcast_tx_sync(node_url: str, tx: dict) -> dict:
     payload = json.dumps(tx).encode().hex()
 
     try:
-        r = requests.post(f'{node_url}/broadcast_tx_sync?tx="{payload}"')
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f'{node_url}/broadcast_tx_sync?tx="{payload}"') as r:
+                data = await r.json()
     except Exception as e:
         raise XianException(e)
 
-    data = r.json()
     return data
 
 
-def broadcast_tx_async(node_url: str, tx: dict):
+# Sync wrapper for backward compatibility
+broadcast_tx_sync = sync_wrapper(broadcast_tx_sync_async)
+
+
+async def broadcast_tx_nowait_async(node_url: str, tx: dict):
     """
     Submits a transaction to be included in the blockchain and returns
     immediately. Does not wait for CheckTx or DeliverTx results.
+    
+    This is the fastest broadcast method but provides no confirmation
+    that the transaction was accepted or processed.
+    
     :param node_url: Node URL in format 'http://<IP>:<Port>'
     :param tx: Transaction data in JSON format (dict)
     """
     payload = json.dumps(tx).encode().hex()
 
     try:
-        requests.post(f'{node_url}/broadcast_tx_async?tx="{payload}"')
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f'{node_url}/broadcast_tx_async?tx="{payload}"') as r:
+                # Just ensure the request was sent successfully
+                r.raise_for_status()
     except Exception as e:
         raise XianException(e)
+
+
+# Sync wrapper for backward compatibility
+broadcast_tx_nowait = sync_wrapper(broadcast_tx_nowait_async)
+
+# Deprecated aliases for backward compatibility
+broadcast_tx_async_async = broadcast_tx_nowait_async
+broadcast_tx_async = broadcast_tx_nowait
