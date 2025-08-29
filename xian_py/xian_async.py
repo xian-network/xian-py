@@ -6,7 +6,6 @@ from xian_py.decompiler import ContractDecompiler
 from xian_py.encoding import decode_str
 from xian_py.exception import XianException
 from xian_py.wallet import Wallet
-from xian_py.async_utils import sync_wrapper
 
 from typing import Optional
 
