@@ -49,12 +49,12 @@ class Wallet:
         self.vk = self.sk.verify_key
 
     @property
-    def private_key(self):
-        return self.sk.encode().hex()
+    def private_key(self) -> str:
+        return str(self.sk.encode().hex())
 
     @property
-    def public_key(self):
-        return self.vk.encode().hex()
+    def public_key(self) -> str:
+        return str(self.vk.encode().hex())
 
     def sign_msg(self, msg: str):
         """ Sign message with private key """
@@ -93,12 +93,12 @@ class EthereumWallet:
         self.account = Account.from_key(private_key)
 
     @property
-    def private_key(self):
-        return self.account.key.hex()
+    def private_key(self) -> str:
+        return str(self.account.key.hex())
 
     @property
-    def public_key(self):
-        return self.account.address
+    def public_key(self) -> str:
+        return str(self.account.address)
 
     def sign_msg(self, msg: str):
         """ Sign message with private key """
