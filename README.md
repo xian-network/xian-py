@@ -608,9 +608,10 @@ The SDK supports transaction simulation for two primary purposes:
 #### Low-Level Transaction with Transaction Cost Estimation
 
 **Synchronous:**
+
 ```python
 from xian_py import Wallet, Xian
-from xian_py.transaction import get_nonce, create_tx, simulate_tx, broadcast_tx_sync
+from xian_py.transaction import get_nonce, create_tx, simulate_tx, broadcast_tx_wait
 
 # Initialize wallet and client
 wallet = Wallet()
@@ -637,24 +638,26 @@ payload['stamps_supplied'] = simulated['stamps_used']
 
 # Create and broadcast transaction
 tx = create_tx(payload, wallet)
-result = broadcast_tx_sync(node_url, tx)
+result = broadcast_tx_wait(node_url, tx)
 ```
 
 **Asynchronous:**
+
 ```python
 import asyncio
 from xian_py import Wallet, XianAsync
-from xian_py.transaction import get_nonce_async, create_tx, simulate_tx_async, broadcast_tx_sync_async
+from xian_py.transaction import get_nonce_async, create_tx, simulate_tx_async, broadcast_tx_wait_async
+
 
 async def low_level_transaction():
     # Initialize wallet and client
     wallet = Wallet()
     node_url = 'http://node-ip:26657'
-    
+
     async with XianAsync(node_url, wallet=wallet) as xian:
         # Get chain ID asynchronously
         chain_id = await xian.get_chain_id()
-        
+
         # Prepare transaction payload
         payload = {
             "chain_id": chain_id,
@@ -665,19 +668,20 @@ async def low_level_transaction():
             "sender": wallet.public_key,
             "stamps_supplied": 0
         }
-        
+
         # Simulate to get stamp cost
         simulated = await simulate_tx_async(node_url, payload)
         print(f"Required stamps: {simulated['stamps_used']}")
-        
+
         # Use the simulated stamps in the actual transaction
         payload['stamps_supplied'] = simulated['stamps_used']
-        
+
         # Create and broadcast transaction
         tx = create_tx(payload, wallet)
-        result = await broadcast_tx_sync_async(node_url, tx)
-        
+        result = await broadcast_tx_wait_async(node_url, tx)
+
         return result
+
 
 asyncio.run(low_level_transaction())
 ```

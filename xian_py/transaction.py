@@ -153,7 +153,7 @@ async def broadcast_tx_commit_async(node_url: str, tx: dict) -> dict:
 broadcast_tx_commit = sync_wrapper(broadcast_tx_commit_async)
 
 
-async def broadcast_tx_sync_async(node_url: str, tx: dict) -> dict:
+async def broadcast_tx_wait_async(node_url: str, tx: dict) -> dict:
     """
     Submits a transaction to be included in the blockchain and returns
     the response from CheckTx. Does not wait for DeliverTx result.
@@ -174,7 +174,7 @@ async def broadcast_tx_sync_async(node_url: str, tx: dict) -> dict:
 
 
 # Sync wrapper for backward compatibility
-broadcast_tx_sync = sync_wrapper(broadcast_tx_sync_async)
+broadcast_tx_wait = sync_wrapper(broadcast_tx_wait_async)
 
 
 async def broadcast_tx_nowait_async(node_url: str, tx: dict):
@@ -201,7 +201,3 @@ async def broadcast_tx_nowait_async(node_url: str, tx: dict):
 
 # Sync wrapper for backward compatibility
 broadcast_tx_nowait = sync_wrapper(broadcast_tx_nowait_async)
-
-# Deprecated aliases for backward compatibility
-broadcast_tx_async_async = broadcast_tx_nowait_async
-broadcast_tx_async = broadcast_tx_nowait

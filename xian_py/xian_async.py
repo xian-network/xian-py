@@ -166,7 +166,7 @@ class XianAsync:
         tx = tr.create_tx(payload, self.wallet)
 
         if synchronous:
-            data = await tr.broadcast_tx_sync_async(self.node_url, tx)
+            data = await tr.broadcast_tx_wait_async(self.node_url, tx)
 
             result = {
                 'success': None,
@@ -189,7 +189,7 @@ class XianAsync:
             return result
 
         else:
-            await tr.broadcast_tx_async_async(self.node_url, tx)
+            await tr.broadcast_tx_nowait_async(self.node_url, tx)
 
     async def send(
             self,
