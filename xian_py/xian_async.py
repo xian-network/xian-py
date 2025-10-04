@@ -215,6 +215,7 @@ class XianAsync:
         }
         return await tr.simulate_tx_async(self.node_url, payload)
 
+    # TODO: Might be better to use a state_string as input...
     async def get_state(
             self,
             contract: str,

@@ -25,6 +25,7 @@ except ImportError:
     ETHEREUM_SUPPORT = False
 
 
+# TODO: Unify this function with the method with the same name from 'Wallet' class
 def verify_msg(public_key: str, msg: str, signature: str) -> bool:
     """ Verify signed message by public key """
     signature = bytes.fromhex(signature)
@@ -96,6 +97,7 @@ class EthereumWallet:
     def private_key(self) -> str:
         return str(self.account.key.hex())
 
+    # TODO: This isn't the public key. This actually is the address and address ≠ public key on Ethereum
     @property
     def public_key(self) -> str:
         return str(self.account.address)
