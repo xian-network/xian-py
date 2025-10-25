@@ -22,6 +22,20 @@ def get_raw_seconds(weeks, days, hours, minutes, seconds):
     return raw_seconds
 
 
+def to_contract_time(py_dt):
+    if isinstance(py_dt, Datetime):
+        dt_obj = py_dt
+    elif isinstance(py_dt, dt):
+        dt_obj = py_dt
+    else:
+        raise TypeError('Expected datetime.datetime or Datetime')
+
+    return {
+        '__time__': [dt_obj.year, dt_obj.month, dt_obj.day,
+                     dt_obj.hour, dt_obj.minute, dt_obj.second]
+    }
+
+
 class Datetime:
     def __init__(self, year, month, day, hour=0, minute=0, second=0, microsecond=0):
         self._datetime = dt(year=year, month=month, day=day, hour=hour,
