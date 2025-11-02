@@ -22,16 +22,20 @@ class Xian:
             self.chain_id = chain_id
 
     def _run_async(self, coro):
-        """Helper to run async methods synchronously"""
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
         except RuntimeError:
-            return asyncio.run(coro)
-        else:
-            raise RuntimeError(
-                "Cannot call sync methods from within an async context. "
-                "Use XianAsync directly for async operations."
-            )
+            return asyncio.run(self._run_with_cleanup(coro))
+        raise RuntimeError(
+            "Cannot call sync methods from within an async context. "
+            "Use XianAsync directly for async operations."
+        )
+
+    async def _run_with_cleanup(self, coro):
+        try:
+            return await coro
+        finally:
+            await self._async_client.close()
 
     def get_tx(self, tx_hash: str) -> dict:
         """ Return transaction data """
