@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "xian-py"
-version = "0.4.7"
+version = "0.4.8"
 description = "Python tools to interact with the Xian blockchain"
 authors = ["endogen"]
 license = "MIT"
