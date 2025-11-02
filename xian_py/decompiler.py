@@ -1,35 +1,36 @@
 import ast
 import astor
+from typing import Optional
 
 
 class CustomSourceGenerator(astor.SourceGenerator):
-    """Custom source generator that handles formatting better"""
+    """Custom source generator with predictable formatting."""
 
     def __init__(self, *args, **kwargs):
-        kwargs['indent_with'] = '    '  # Use 4 spaces for indentation
+        kwargs.setdefault("indent_with", "    ")
         super().__init__(*args, **kwargs)
+        self.current_line_length = 0
 
     def write(self, *params):
-        """Track line length when writing"""
         for item in params:
             self.current_line_length += len(str(item))
         super().write(*params)
 
     def newline(self, node=None, extra=0):
-        """Reset line length counter on newline"""
         self.current_line_length = 0
-        super().newline(node, extra)
+        super().newline(node=node, extra=extra)
 
     def visit_Str(self, node):
-        """Use double quotes for strings"""
-        val = str(node.s)
-        if '"' in val and "'" not in val:
-            self.write("'" + val + "'")
+        """Emit string literals with consistent quoting."""
+        value = str(node.s)
+        if '"' in value and "'" not in value:
+            self.write("'" + value + "'")
         else:
-            self.write('"' + val.replace('"', '\\"') + '"')
+            escaped = value.replace('"', '\\"')
+            self.write('"' + escaped + '"')
 
     def visit_JoinedStr(self, node):
-        """Handle f-strings with double quotes"""
+        """Handle f-strings using double quotes."""
         self.write('f"')
         for value in node.values:
             if isinstance(value, ast.Str):
@@ -37,124 +38,142 @@ class CustomSourceGenerator(astor.SourceGenerator):
             elif isinstance(value, ast.Constant) and isinstance(value.value, str):
                 self.write(value.value)
             elif isinstance(value, ast.FormattedValue):
-                self.write('{')
+                self.write("{")
                 self.visit(value.value)
                 if value.conversion != -1:
-                    self.write('!' + chr(value.conversion))
+                    self.write("!" + chr(value.conversion))
                 if value.format_spec is not None:
-                    self.write(':')
+                    self.write(":")
                     self.visit(value.format_spec)
-                self.write('}')
+                self.write("}")
             else:
-                self.write('{')
+                self.write("{")
                 self.visit(value)
-                self.write('}')
+                self.write("}")
         self.write('"')
 
     def visit_Num(self, node):
-        """Format numbers without scientific notation"""
+        """Avoid scientific notation when possible."""
         if isinstance(node.n, float):
-            self.write(f"{node.n:.10f}".rstrip('0').rstrip('.'))
+            self.write(f"{node.n:.10f}".rstrip("0").rstrip("."))
         else:
             self.write(str(node.n))
 
 
 class ContractDecompiler(ast.NodeTransformer):
+    """Reconstruct readable contract source from compiled form."""
+
     def __init__(self):
-        self.contract_name = None
-        self.orm_vars = set()
-        self.comments = {}
+        super().__init__()
+        self.orm_vars: set[str] = set()
 
     def decompile(self, source: str) -> str:
-        """Decompile source code and return as a string"""
-        tree = ast.parse(source)
-        # First pass to collect ORM variables and comments
-        self.collect_orm_vars(tree)
-        # Second pass to transform the code
+        """Return best-effort decompiled source, falling back gracefully."""
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            return self._normalize_output(source)
+
+        self.orm_vars.clear()
+        self._collect_orm_vars(tree)
+
         transformed = self.visit(tree)
-        # Generate source code using the custom generator
+        ast.fix_missing_locations(transformed)
+
         generator = CustomSourceGenerator()
         generator.visit(transformed)
-        return ''.join(generator.result)
+        rendered = "".join(generator.result)
+        return self._normalize_output(rendered)
 
-    def collect_orm_vars(self, node):
-        """First pass to collect all ORM variable names"""
-        for node in ast.walk(node):
-            if isinstance(node, ast.Assign):
-                if (isinstance(node.value, ast.Call) and
-                        isinstance(node.value.func, ast.Name) and
-                        any(kw.arg == 'contract' for kw in node.value.keywords)):
+    def _collect_orm_vars(self, node: ast.AST) -> None:
+        """Record underlying names for ORM variables to strip prefixes safely."""
+        for child in ast.walk(node):
+            if isinstance(child, ast.Assign) and isinstance(child.value, ast.Call):
+                if not isinstance(child.value.func, ast.Name):
+                    continue
+                for kw in child.value.keywords or []:
+                    if kw.arg == "name" and isinstance(
+                            getattr(kw, "value", None), ast.Str
+                    ):
+                        self.orm_vars.add(kw.value.s)
 
-                    # Get the original name from the 'name' keyword argument
-                    name_kw = next(kw for kw in node.value.keywords if kw.arg == 'name')
-                    if isinstance(name_kw.value, ast.Str):
-                        self.orm_vars.add(name_kw.value.s)
-
-    def visit_Name(self, node):
-        """Remove __ prefix from variable and function names"""
-        if isinstance(node.id, str):
-            if node.id.startswith('__') and node.id[2:] in self.orm_vars:
-                node.id = node.id[2:]
-            elif node.id.startswith('__'):
-                node.id = node.id[2:]
+    def visit_Name(self, node: ast.Name) -> ast.AST:
+        ident = node.id
+        if ident.startswith("__"):
+            candidate = ident[2:]
+            node.id = candidate if candidate in self.orm_vars else candidate
         return node
 
-    def visit_FunctionDef(self, node):
-        """Transform function definitions back to original form"""
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.AST:
         self.generic_visit(node)
 
-        # Handle seed/init function
-        if node.name == '____':
-            node.name = 'seed'
-            node.decorator_list = [ast.Name(id='construct', ctx=ast.Load())]
+        if node.name == "____":
+            node.name = "seed"
+            node.decorator_list = [ast.Name(id="construct", ctx=ast.Load())]
             return node
 
-        # Handle exported functions
         if node.decorator_list:
-            decorator = node.decorator_list[0]
-            if isinstance(decorator, ast.Call):
-                # Specifically for export calls, replace with simple @export
-                if (isinstance(decorator.func, ast.Name) and
-                        decorator.func.id == 'export' and
-                        len(decorator.args) == 1 and
-                        isinstance(decorator.args[0], ast.Constant)):
-                    node.decorator_list = [ast.Name(id='export', ctx=ast.Load())]
-            elif isinstance(decorator, ast.Name) and decorator.id.startswith('__'):
-                decorator.id = decorator.id[2:]
+            first = node.decorator_list[0]
+            if isinstance(first, ast.Call):
+                if (
+                        isinstance(first.func, ast.Name)
+                        and first.func.id in {"export", "__export"}
+                        and first.args
+                        and isinstance(first.args[0], ast.Constant)
+                ):
+                    node.decorator_list = [ast.Name(id="export", ctx=ast.Load())]
+            elif isinstance(first, ast.Name) and first.id.startswith("__"):
+                first.id = first.id[2:]
 
-        # Remove __ prefix from function name if it exists
-        if node.name.startswith('__'):
+        if node.name.startswith("__"):
             node.name = node.name[2:]
 
         return node
 
-    def visit_Call(self, node):
-        """Handle function calls, including decimal removal"""
+    def visit_Call(self, node: ast.Call) -> ast.AST:
         self.generic_visit(node)
 
-        if (isinstance(node.func, ast.Name) and
-                node.func.id == 'decimal' and
-                len(node.args) == 1 and
-                isinstance(node.args[0], (ast.Str, ast.Constant))):
-
-            value = node.args[0].s if isinstance(node.args[0], ast.Str) else node.args[0].value
-            try:
-                float_val = float(value)
-                return ast.Num(n=float_val)
-            except ValueError:
-                return node
-
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == "decimal" and node.args:
+            arg = node.args[0]
+            value: Optional[str] = None
+            if isinstance(arg, ast.Str):
+                value = arg.s
+            elif isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                value = arg.value
+            if value is not None:
+                try:
+                    return ast.Num(n=float(value))
+                except ValueError:
+                    pass
         return node
 
-    def visit_Assign(self, node):
-        """Transform ORM variable assignments"""
+    def visit_Assign(self, node: ast.Assign) -> ast.AST:
         self.generic_visit(node)
 
-        if (isinstance(node.value, ast.Call) and
-                isinstance(node.value.func, ast.Name)):
-
-            # Remove contract and name keywords
-            if any(kw.arg == 'contract' for kw in node.value.keywords):
-                node.value.keywords = [kw for kw in node.value.keywords
-                                       if kw.arg == 'default_value']
+        value = node.value
+        if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
+            if any(kw.arg == "contract" for kw in value.keywords or []):
+                value.keywords = [
+                    kw for kw in value.keywords if kw.arg == "default_value"
+                ]
         return node
+
+    @staticmethod
+    def _normalize_output(text: str) -> str:
+        """Collapse repeated blank lines and ensure a trailing newline."""
+        lines = text.splitlines()
+        normalized: list[str] = []
+        blank = False
+        for raw in lines:
+            line = raw.rstrip()
+            if line:
+                normalized.append(line)
+                blank = False
+            else:
+                if not blank:
+                    normalized.append("")
+                blank = True
+
+        collapsed = "\n".join(normalized).strip("\n")
+        return collapsed + "\n" if collapsed else ""
